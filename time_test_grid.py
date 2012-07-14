@@ -20,7 +20,7 @@ def whoami():
 ###############################################################################
 long_description = ''
 tests = {   'v_cycle_convergence':  False,\
-            'domain_size':          True,\
+            'domain_size':          False,\
             'sparsity':             False,\
             'presmoother':          False,\
             'gs_thresh':            False,\
@@ -28,7 +28,7 @@ tests = {   'v_cycle_convergence':  False,\
             'big_gs':               False,\
             'postsmoother':         False,\
             'ngrid':                False,\
-            'graph_pressure':       False,\
+            'graph_pressure':       True,\
             'compare_solvers':      False,\
             'full':                 False,\
             'selftest':             False,\
@@ -55,7 +55,7 @@ if tests_count == 0:
 
 
 ##multiprocessing parameters
-processes = 20
+processes = 2
 chunksize = 1
 
 ##general parameters
@@ -151,7 +151,7 @@ elif tests['graph_pressure']:
     repeats = 1
     cycless = [2,]
     graph_pressures = [True,]
-    verbose = True
+    verbose = False
 else:
     print 'No tests defined.'
     sys.exit()

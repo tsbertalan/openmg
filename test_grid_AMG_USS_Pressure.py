@@ -5,7 +5,6 @@ from scipy import *
 import scipy.sparse as sparse
 import numpy as np
 from openmg import *
-from tom_viz import *
 
 def whoami():
     import sys
@@ -182,7 +181,8 @@ def testgrid(parameters):
 
             Phi_graph=reshape(Phi,[Nz,Ny,Nx])
             filename='graphs/USS_output-%s.png' % (info_dict['solverstring'],)
-            make_multiple_3d_graphs([Phi_graph_correct.T,Phi_graph.T,Phi_two_graph.T,Phi_three_graph.T],filename)
+            import visualization as viz
+            viz.make_multiple_3d_graphs([Phi_graph_correct.T,Phi_graph.T,Phi_two_graph.T,Phi_three_graph.T],filename)
             del [Phi,Phi_c,Phi_cl,Phi_graph,Phi_w,u,Qa,DM,D0,LHS,A]
         else:
             del [Phi,Phi_c,Phi_cl,Phi_w,u,Qa,DM,D0,LHS,A]
