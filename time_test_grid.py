@@ -6,14 +6,7 @@ from multiprocessing import Pool
 from test_grid_AMG_USS_Pressure import testgrid
 from random import shuffle
 import logging
-#import resource # unix-only
-
-def whoami():
-    import sys
-    return sys._getframe(1).f_code.co_name
-
-#print whoami(),": parent  PID is ",os.getppid()
-#print whoami(),": |-> process PID is ",os.getpid()
+#import resource # unix-only linux-only?
 
 ###############################################################################
 # Choose a Test
@@ -156,7 +149,7 @@ else:
     print 'No tests defined.'
     sys.exit()
 
-if True:
+if False:
     print 'Test Definition:'
     print '    cycles in',cycless
     print '    gridlevels in',gridlevelss
@@ -293,16 +286,11 @@ def runparameters(parameters):
         #print 'from the resource module (runparameters, before testgrid):',resource.getrusage(resource.RUSAGE_SELF).ru_isrss,'problemscale',parameters['problemscale']
         returned = testgrid(parameters) #return a dictionary
         #print 'from the resource module (runparameters, after  testgrid):',resource.getrusage(resource.RUSAGE_SELF).ru_isrss,'problemscale',parameters['problemscale']
-        if verbose: print "unpacking testgrid results"
         toexec = ','.join(returned) + ', = returned.values()' # unpack the returned stuff into the local namespace. print join(returned) to see what those stuffs are.
-        if verbose: print toexec
         exec toexec
-        if verbose:            print 'unpacked info_dict from test_grid()'
         delta=(datetime.now()-startTime)
-        if verbose:            print 'calculated delta'
         trial_time=delta.microseconds/1000000.+delta.seconds*1.
         if verbose: print 'Trial time was %.4f seconds.'%trial_time
-        #print "%s:    trial %i of %i: %f sec" % (parameters['solver'],trialnumber,repeats,trial_time)
         csv.write("\n")
         solvernumbers = {'pyamg':1, 'pyamg-linagg':5, 'mmg':2, 'gs':3, 'direct':4, 'gs_xiter':3}
         data_list = []
@@ -312,37 +300,27 @@ def runparameters(parameters):
         data_list.append('%i'%parameters['coarsest_level'])
         data_list.append('%i'%parameters['gridlevels'])
         data_list.append('%.6f'%parameters['threshold'])
-#        if verbose: print 'trial_time'
         data_list.append('%.3f'%trial_time)
-#        if verbose: print 'memory'
         data_list.append('%i'%memory(os.getpid()))
-#        if verbose: print 'resident'
         data_list.append('%i'%resident(os.getpid()))
-#        if verbose: print 'stacksize'
         data_list.append('%i'%stacksize(os.getpid()))
-#        if verbose: print 'cycle'
         data_list.append('%i'%cycle)
-#        if verbose: print 'norm'
         data_list.append('%.20f'%norm)
         data_list.append('%i'%parameters['iterations'])
         data_list.append('%i'%parameters['pre_iterations'])
         data_list.append('%i'%parameters['post_iterations'])
-#        if verbose: print 'joining up data to one string'
         if parameters['dense']: sparsity = '0'
         else: sparsity = '1'
         data_list.append(sparsity)
         data = ','.join(data_list)
-        if verbose: print 'data string is %s'%data
         csv.write(data) # data is a string
-#        if verbose: print 'Wrote data to csv file.'
         csv.flush()
     except:
         solverstring = sys.exc_info()[0]
         print ""
         logging.exception('error in runparameters():')
 #        logging.debug("debug: Something awful happened!")
-        print "ERROR:", solverstring, "with parameters:"
-        print parameters
+        print "ERROR:", solverstring, "with parameters:", parameters
         print ""
     f.write( "%s\n" %solverstring)
     f.write("\n")
@@ -360,7 +338,6 @@ remaining = poolresult._number_left
 def percentdone(jobcount, remaining):
     return '%.2f%%'%(    (jobcount.__float__() - remaining.__float__()) / jobcount.__float__() * 100.    )
 #print "Waiting for", remaining, "tasks to complete..."
-print '%s' % percentdone(jobcount,remaining)
 oldremaining = remaining
 while True:
     if (poolresult.ready()): break
@@ -378,7 +355,7 @@ f.write("\n")
 csv.write("\n")
 csv.write('%s\n' % datetime.now())
 csv.write('parameters_delta of %s\n' % parameters_delta)
-print 'parameters_delta of %s' % parameters_delta
+print 'This script took %s to run.' % parameters_delta
 csv.write("\n")
 csv.close()
 f.close()
