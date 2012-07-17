@@ -16,10 +16,6 @@ def whoami():
 
 def testgrid(parameters):
     exec ','.join(parameters) + ', = parameters.values()' # unpack the parameters into the local namespace
-    #print ','.join(parameters) + ', = parameters.values()' # do this to see what you're unpacking
-    #if verbose:
-        #print "gridlevels is %i." % gridlevels
-    #solver='pyamg' # pyamg, mmg, gs, or direct
     description = '-' + description
 
     dt = 24.0*7 #hours per time step
@@ -100,15 +96,11 @@ def testgrid(parameters):
     DM =  sparse.spdiags(main_diag,array([0]),N/(2**ndims)**level,N/(2**ndims)**level,format='csr')
     D0 =  sparse.spdiags(ones(N/(2**ndims)**level)*alpha,array([0]),N/(2**ndims)**level,N/(2**ndims)**level,format='csr')
     LHS = (A+D0+DM).toarray().astype(np.float64)
-    if verbose:
-        print 'LHS shape is:'
-        print LHS.shape
 
 
     # Main Timestep Loop
     info_dict = {'test_grid':True}
     for k in range(Nsteps):
-        #print "test_USS_etc.: timestep %i of %i." % (k+1,Nsteps)
         Qa = (-A.astype(np.float64)*Phi.astype(np.float64)).astype(np.float64)
         Qa-= DM*Phi
 
@@ -139,9 +131,8 @@ def testgrid(parameters):
             if graph_pressure: parameters['cycles']=3
             if graph_pressure: (uthree,info_dict) = mg_solve(LHS,q+Qa,parameters) # info_dict here contains both cycle and norm
 
-            if verbose: print "got ",",".join(info_dict)," from mg_solve."
             info_dict['solverstring'] = '%igrid-%iiter-%icells%sthreshold-%icycles' % (gridlevels,iterations,N,threshold,cycles)
-            if verbose: print 'mg_solve() returned this solverstring: %s' % info_dict['solverstring']
+            if verbose: print "Got ",",".join(info_dict)," from mg_solve, with solverstring", info_dict['solverstring']
         elif solver == 'gs':                                            ##Our Gauss-Seidel iterative solver
             (u,gs_iterations) =   iterative_solve_to_threshold(LHS, q+Qa, np.zeros((q.size,)), threshold,verbose=verbose)
             info_dict['solverstring']='GaussSeidel-%iiter-%icells' % (gs_iterations,N)
@@ -166,8 +157,6 @@ def testgrid(parameters):
         Phi_w[k+1]=Phi[Iw]
         Phi_cl[k+1]=Phi[0]
         Phi_c[k+1]=Phi[-1]
-        if verbose: print "adding description", description, " to solverstring"
-        if verbose: print 'info_dict now contains', ','.join(info_dict)
         info_dict['solverstring'] += description
         if graph_pressure:
             u_correct = np.linalg.solve(LHS,q+Qa)
