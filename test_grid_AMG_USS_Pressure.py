@@ -7,14 +7,14 @@ import numpy as np
 from openmg import *
 
 def whoami():
+    '''
+    >> print whoami(),": parent  PID is ",os.getppid()
+    >> print whoami(),": |-> process PID is ",os.getpid()
+    '''
     import sys
     return sys._getframe(1).f_code.co_name
 
-#functions for checking memory usage. From http://stackoverflow.com/questions/938733/python-total-memory-used
-
 def testgrid(parameters):
-    #print whoami(),": parent  PID is ",os.getppid()
-    #print whoami(),": |-> process PID is ",os.getpid()
     exec ','.join(parameters) + ', = parameters.values()' # unpack the parameters into the local namespace
     #print ','.join(parameters) + ', = parameters.values()' # do this to see what you're unpacking
     #if verbose:
