@@ -17,7 +17,6 @@ def whoami():
 def testgrid(parameters):
     exec ','.join(parameters) + ', = parameters.values()' # unpack the parameters into the local namespace
     description = '-' + description
-`a
     dt = 24.0*7 #hours per time step
     Nsteps = 1 #number of steps
     Nx = problemscale #number of cells, x-dimension

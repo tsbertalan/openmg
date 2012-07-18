@@ -20,8 +20,8 @@ tests = {   'v_cycle_convergence':  False,\
             'little_gs':            False,\
             'big_gs':               False,\
             'postsmoother':         False,\
-            'ngrid':                False,\
-            'graph_pressure':       True,\
+            'ngrid':                True,\
+            'graph_pressure':       False,\
             'compare_solvers':      False,\
             'full':                 False,\
             'selftest':             False,\
@@ -39,8 +39,8 @@ for test_description in tests:
 if tests_count > 1:
     print "Setting more than one test to True can result in confusing "+\
           "combination-tests. Either set only one test to True, "+\
-          "or write a new combination test, with the desired parameters. "
-    print "Note that such combination tests can produce interesting results,"+\
+          "or write a new combination test, with the desired parameters."
+    print "Note that such combination tests can produce interesting results, "+\
           "although they require multiple linear regression to analyze."
     sys.exit()
 if tests_count == 0:
@@ -48,7 +48,7 @@ if tests_count == 0:
 
 
 ##multiprocessing parameters
-processes = 2
+processes = 18
 chunksize = 1
 
 ##general parameters
@@ -133,8 +133,12 @@ elif tests['full']: # probably not a good idea
     solvers = ['pyamg', 'mmg', 'gs', 'direct']
     cycless = range(1,42)[::2]
 elif tests['ngrid']:
-    problemscales = [20,]
-    gridlevelss = [2,3,4]
+    #verbose = True
+    threshold = 2
+    denses = [True,]
+    problemscales = [24,]
+    processes = 8
+    gridlevelss = [3,4,5]
 elif tests['little_mmg']:
     verbose = True
     problemscales = [12,]
@@ -316,11 +320,12 @@ def runparameters(parameters):
         csv.write(data) # data is a string
         csv.flush()
     except:
-        solverstring = sys.exc_info()[0]
+        #solverstring = sys.exc_info()[0]
+        solverstring = 'ERROR: ' + str(sys.exc_info()[0]) + ' with parameters ' + str(parameters)
         print ""
         logging.exception('error in runparameters():')
 #        logging.debug("debug: Something awful happened!")
-        print "ERROR:", solverstring, "with parameters:", parameters
+        print solverstring
         print ""
     f.write( "%s\n" %solverstring)
     f.write("\n")
@@ -355,6 +360,7 @@ f.write("\n")
 csv.write("\n")
 csv.write('%s\n' % datetime.now())
 csv.write('parameters_delta of %s\n' % parameters_delta)
+print 'Test description and filename seed is:',filelabel
 print 'This script took %s to run.' % parameters_delta
 csv.write("\n")
 csv.close()

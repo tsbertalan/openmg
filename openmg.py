@@ -1,5 +1,5 @@
 #from numpy import *
-from tom_viz import *
+#from tom_viz import *
 import numpy as np
 import scipy.sparse as sparse
 from sys import exit
@@ -59,7 +59,7 @@ def restriction(N, shape, verbose=False):
     n = N / (2 ** alpha)
     if n == 0:
         print 'New restriction matrix would have shape', (n,N), '.'
-        print 'coarse set would have 0 points!' + 
+        print 'coarse set would have 0 points! ' + \
               'Try a larger problem or fewer gridlevels.'
         exit()
 #    print 'New restriction matrix will have shape', (n,N), '.'

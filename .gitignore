@@ -1,0 +1,7 @@
+# editor temporary files
+*.swp
+*~
+# python bytecode
+*.pyc
+# output (logging folder)
+output/*
