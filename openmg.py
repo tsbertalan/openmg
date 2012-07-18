@@ -8,8 +8,6 @@ from time import strftime, localtime
 isolocaltime = localtime()
 #import scipy.sparse.linalg as sparselinalg # there are some alternative
 #    iterative solvers in here we could use
-#sigma = (20.0 * 20.0 * 10.0) ** 3
-#sigma = 10 ** 3
 sparsenorm = sparse.base.np.linalg.norm
 
 
@@ -23,7 +21,6 @@ def dense_restriction(N, shape):
     NX = shape[0]
     if alpha >= 2:
         NY = shape[1]
-    #NZ = shape[3] # don't need this
     each = 1.0 / (2 ** alpha)
     # columns in the restriction matrix:
     if alpha == 1:
@@ -53,16 +50,17 @@ def dense_restriction(N, shape):
 
 def restriction(N, shape, verbose=False):
     '''
-    ASSUMING ALPHA = 3 FOR NOW. alpha is the dimensionality of the problem.
-    Sorta kills the black-boxability. Hrm.
     shape is a tuple in the shape of the problem domain.
+    Requiring the shape of the domain is bad for the black-boxibility.
+    Implementing a separate Ruge Steuben restriction method would avoid this.
     '''
-    #print 'making restriction for shape %s, size N %i' % (shape,N)
+    # Alpha is the dimensionality of the problem.
     alpha = len(shape)
     n = N / (2 ** alpha)
     if n == 0:
         print 'New restriction matrix would have shape', (n,N), '.'
-        print 'coarse set would have 0 points! Exiting.'
+        print 'coarse set would have 0 points!' + 
+              'Try a larger problem or fewer gridlevels.'
         exit()
 #    print 'New restriction matrix will have shape', (n,N), '.'
     R = sparse.lil_matrix((n, N))
