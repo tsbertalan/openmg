@@ -20,11 +20,11 @@ tests = {   'v_cycle_convergence':  False,\
             'little_gs':            False,\
             'big_gs':               False,\
             'postsmoother':         False,\
-            'ngrid':                True,\
+            'ngrid':                False,\
             'graph_pressure':       False,\
             'compare_solvers':      False,\
             'full':                 False,\
-            'selftest':             False,\
+            'selftest':             True,\
             'little_mmg':           False,\
             'something_else':       False,\
 }
