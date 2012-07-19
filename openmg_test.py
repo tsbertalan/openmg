@@ -1,21 +1,24 @@
 import numpy as np
 from openmg import *
-from sys import _getframe
-from pyamg.gallery import poisson as poissonpyamg  # I should write my own.
+from sys import _getframe, exc_info
+import logging
+# you can use pyamg's poisson generator instead of poissonnd,
+# for sparse_ output:
+#from pyamg.gallery import poisson as poissonpyamg
 
 
 def tests():
     '''
     This is the only function that actually gets executed when this file is
-    run as __main__. Put tests in here to run them easily.
+    run as __main__. Call tests in here to run them easily.
     '''
-#    test_123d_noise_mg()  # this is a good one
+    test_123d_noise_mg()  # this is a good one
 #    test_gs_thresh()
 #    test_a()
 #    test_b()
 #    test_c()
 #    test_d()
-    test_3d_noise_mg_multi_N()
+#    test_3d_noise_mg_multi_N()
 #    test_1d_noise_mg()
 #    test_2d_noise_mg()
 #    test_3d_noise_mg()
@@ -33,6 +36,7 @@ def whoami(level=1):
 def saytest():
     '''Declare that a test is beginning!'''
     print ''
+    print ''
     print 'TEST >>>>', whoami(2)
 
 
@@ -49,7 +53,7 @@ def test_a():
     gridlevels = 2
     u_zeros = np.zeros((size,))
     u_actual = np.sin(np.array(range(int(size))) * 3.0 / size).T
-    A = poissonpyamg((size,))
+    A = poissonnd((size,))
     #print u_actual
     #print A
     #print "A (shape %s) is:" % (A.shape,)
@@ -63,16 +67,16 @@ def test_a():
                   'problemshape': (problemscale, problemscale, problemscale),
                   'gridlevels': gridlevels,
                   'iterations': iterations,
-                  'verbose': True, }
+                  'verbose': False, }
     u_mmg = mg_solve(A, b, parameters)[0]
     make_graph("actual.png", "actual at n=%s" % size, u_actual)
     make_graph("iterative.png", "iterative at n=%s" % size, u_iterative)
     make_graph("multigrid.png", "mmg at n=%s" % size, u_mmg)
     print sparse.base.np.linalg.norm(b - flexible_mmult(
-                                                A,
-                                                u_iterative.reshape((size, 1))
-                                              )
+                                             A,
+                                             u_iterative.reshape((size, 1))
                                          )
+                                    )
 
 
 def test_b():
@@ -134,7 +138,7 @@ def test_1d_multifreq(N, finaliterations, spectralxscale='linear', solutionname=
     gif_output_name = 'spectral_solution_rate-%i_unknowns-%s_xscale-%s_solution.gif' % (N, spectralxscale, solutionname)
     print gif_output_name
 
-    A = poissonpyamg((N,))
+    A = poissonnd((N,))
     b = flexible_mmult(A, data)
 
 #    Prepare for Graphing
@@ -257,7 +261,7 @@ def test_2d_multifreq(problemscale,finaliterations):
     specax.set_xscale('log')
 
     # Problem Setup:
-    A = poissonpyamg((NX, NX))
+    A = poissonnd((NX, NX))
     solnforb = data.ravel().reshape((NX ** 2, 1))
     b = flexible_mmult(A, solnforb)
 
@@ -344,13 +348,13 @@ def test_1d_noise_mg():
     NX = 512
     N = NX
     u_actual = np.random.random((NX,)).reshape((N, 1))
-    A_in = poissonpyamg((NX,))
+    A_in = poissonnd((NX,))
     b = flexible_mmult(A_in, u_actual)
     (u_mg, info_dict) = mg_solve(A_in, b, {
                                            'problemshape': (NX,),
                                            'gridlevels': 3,
                                            'iterations': 1,
-                                           'verbose': True,
+                                           'verbose': False,
                                            'threshold': 4
                                           }
                                 )
@@ -366,13 +370,13 @@ def test_2d_noise_mg():
     NY = NX
     N = NX * NY
     u_actual = np.random.random((NX, NY)).reshape((N, 1))
-    A_in = poissonpyamg((NX, NY))
+    A_in = poissonnd((NX, NY))
     b = flexible_mmult(A_in, u_actual)
     (u_mg, info_dict) = mg_solve(A_in, b, {
                                            'problemshape': (NX, NY),
                                            'gridlevels': 3,
                                            'iterations': 1,
-                                           'verbose': True,
+                                           'verbose': False,
                                            'threshold': 4
                                           }
                                 )
@@ -388,13 +392,15 @@ def test_3d_noise_mg():
     NY = NZ = NX
     N = NX * NY * NZ
     u_actual = np.random.random((NX, NY, NZ)).reshape((N, 1))
-    A_in = poissonpyamg((NX, NY, NZ))
+    A_in = poissonnd((NX, NY, NZ))
+    print A_in.shape
+    print u_actual.shape
     b = flexible_mmult(A_in, u_actual)
     (u_mg, info_dict) = mg_solve(A_in, b, {
                                            'problemshape': (NX, NY, NZ),
                                            'gridlevels': 3,
                                            'iterations': 1,
-                                           'verbose': True,
+                                           'verbose': False,
                                            'threshold': 4
                                           }
                                 )
@@ -406,7 +412,7 @@ def test_123d_noise_mg():
     saytest()
     test_1d_noise_mg()
     test_2d_noise_mg()
-    test_3d_noise_mg()
+#    test_3d_noise_mg()  # This doesn't work yet.
 
 
 def test_3d_noise_mg_multi_N():
@@ -427,7 +433,7 @@ def test_3d_noise_mg_multi_N():
             N = NX * NY * NZ
             print 'NX is', NX, 'and N is ', N, ':'
             u_actual = np.random.random((NX, NY, NZ)).reshape((N, 1))
-            A_in = poissonpyamg((NX, NY, NZ))
+            A_in = poissonnd((NX, NY, NZ))
             b = flexible_mmult(A_in, u_actual)
             (u_mg, info_dict) = mg_solve(A_in, b,
                                 {'problemshape': (NX, NY, NZ),
@@ -438,7 +444,7 @@ def test_3d_noise_mg_multi_N():
                                 })
             print '    test_3d_noise_mg:', info_dict
         except:
-            errortext = sys.exc_info()[0]
+            errortext = exc_info()[0]
             print '    ERROR:', errortext
         print ''
 
@@ -459,7 +465,7 @@ def test_2d_mpl_demo():
     NY = NX
     N = NX * NY
     (X, Y, u_actual) = mpl_test_data(delta=1 / float(sizemultiplier))
-    A_in = poissonpyamg((NX, NY))
+    A_in = poissonnd((NX, NY))
     b = flexible_mmult(A_in, u_actual.ravel())
     u_mg = mg_solve(A_in, b, {
                               'problemshape': (NX, NY),
@@ -517,6 +523,89 @@ def do_error():
     a_dictionary = {'one': 1}
     x = a_dictionary['two']
     return x  # obviously, we'll never get here.
+
+def poissonnd(shape):
+    '''Using a 1-, 2-, or 3-element tuple for the shape,
+    return a dense square Poisson matrix for that question.
+    '''
+    if len(shape) == 0:
+        print 'Only 1, 2 or 3 dimensions are allowed.'
+        exit()
+    elif len(shape) == 1:
+        return poisson1d(shape)
+    elif len(shape) == 2:
+        return poisson2d(shape)
+    elif len(shape) == 3:
+        return poisson3d(shape)
+
+def poisson1d((n,)):
+    '''
+    Returns a square matrix.
+    '''
+    main = -2 * np.eye(n)
+    oneup = np.hstack((\
+                np.zeros((n,1)),\
+                np.vstack((\
+                            np.eye(n-1),\
+                            np.zeros((1,n-1))\
+                         ))\
+                ))
+    return main + oneup + oneup.T
+
+def poisson2d((NX,NY)):
+    '''
+    Returns a dense square matrix.
+    '''
+    N=NX*NY
+    main   = np.eye(N)*-4
+    oneup = np.hstack((\
+                np.zeros((NX*NY,1)),\
+                np.vstack((\
+                    np.eye(NX*NY-1),\
+                    np.zeros((1,NX*NY-1))\
+                ))
+            ))
+    twoup = np.hstack((\
+                np.zeros((NX*NY,1+NX)),\
+                np.vstack((\
+                    np.eye(NX*NY-1-NX),\
+                    np.zeros((1+NX,NX*NY-1-NX))\
+                ))
+            ))
+    return main + oneup + twoup + oneup.T + twoup.T
+
+def poisson3d((NX,NY,NZ)):
+    '''
+    Returns a dense square matrix.
+    # TODO (Tom) Currently, poisson3d is just a copy of poisson2d. Fix that.
+    It would make more sense to make these with stencils instead, like PyAMG's
+    examples do.
+    '''
+    N=NX*NY
+    main   = np.eye(N)*-4
+    oneup = np.hstack((\
+                np.zeros((NX*NY,1)),\
+                np.vstack((\
+                    np.eye(NX*NY-1),\
+                    np.zeros((1,NX*NY-1))\
+                ))
+            ))
+    twoup = np.hstack((\
+                np.zeros((NX*NY,1+NX)),\
+                np.vstack((\
+                    np.eye(NX*NY-1-NX),\
+                    np.zeros((1+NX,NX*NY-1-NX))\
+                ))
+            ))
+    threeup = np.hstack((\
+                np.zeros((NX*NY,1+NX)),\
+                np.vstack((\
+                    np.eye(NX*NY-1-NX),\
+                    np.zeros((1+NX,NX*NY-1-NX))\
+                ))
+            ))
+    return main + oneup + twoup + oneup.T + twoup.T
+
 
 
 if __name__ == "__main__":

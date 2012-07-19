@@ -2,6 +2,7 @@
 #from tom_viz import *
 import numpy as np
 import scipy.sparse as sparse
+import scipy.sparse.linalg as splinalg
 from sys import exit
 
 from time import strftime, localtime
@@ -164,7 +165,9 @@ def coarse_solve(A, b):
     the sparsity of A.
     '''
     if sparse.issparse(A):
-        toreturn = sparse.linalg.dsolve.spsolve(A, b)
+        #toreturn = sparse.sputils.np.linalg.solve(A, b)
+        #toreturn = sparse.linalg.dsolve.spsolve(A, b)
+        toreturn = splinalg.spsolve(A,b)
     else:
         toreturn = np.linalg.solve(A, b)
     return np.ravel(toreturn)
