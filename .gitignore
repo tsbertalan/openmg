@@ -5,3 +5,4 @@
 *.pyc
 # output (logging folder)
 output/*
+temp/*
