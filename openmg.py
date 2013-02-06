@@ -518,6 +518,15 @@ def poisson(n):
     A = s + i * 2.0
     return A
 
+def poisson1D(n):
+    x = -1
+    y =  2
+    z = -1
+    x = x * np.ones(n - 1)
+    z = z * np.ones(n - 1)
+    y = y * np.ones(n)
+    return np.diag(x, -1) + np.diag(y) + np.diag(z, 1)
+    
 
 def poisson2d((NX, NY)):
     '''Returns a dense square coefficient matrix for the 2D Poisson equation.
