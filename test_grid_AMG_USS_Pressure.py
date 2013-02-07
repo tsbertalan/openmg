@@ -4,7 +4,7 @@ from numpy import *
 from scipy import *
 import scipy.sparse as sparse
 import numpy as np
-from openmg import *
+from openmg import mg_solve
 
 def whoami():
     '''
@@ -118,7 +118,7 @@ def testgrid(parameters):
         if solver == 'pyamg-linagg':                                           ##PyAMG; linear aggregation:
             #make_sparsity_graph('graphs/pyamg_LHS.png','pyamg LHS',A+D0+DM)
             ml=pyamg.smoothed_aggregation_solver(A+D0+DM)#,mat_flag= 'symmetric',strength= 'symmetric')
-            u = ml.solve(q+Qa,cycle='F',tol=1e-06, accel='cg')
+            u = ml.solve(q+Qa,cycle='F',tol=threshold, accel='cg')
             info_dict['solverstring']='PyAMG-%icells' % N
             info_dict['cycle']=0
             info_dict['norm']=np.linalg.norm(q+Qa-np.dot(LHS,u))
