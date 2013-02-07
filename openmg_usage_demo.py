@@ -19,6 +19,9 @@ params = {'problemshape': (N,), 'gridlevels': 1,
 soln  = omg.mg_solve(A, b, params)[0]
 #print params
 print "error norm (Gauss-Seidel):", np.linalg.norm(soln - u_true)
+# output:
+#  error norm (Gauss-Seidel): 1.0511248589e-13
+
 
 # use a 2-grid pattern
 params = {'problemshape': (N,), 'gridlevels': 2, 'cycles': 25,
@@ -26,3 +29,6 @@ params = {'problemshape': (N,), 'gridlevels': 2, 'cycles': 25,
 soln  = omg.mg_solve(A, b, params)[0]
 #print params
 print "error norm (2-grid):", np.linalg.norm(soln - u_true)
+# output:
+#  error norm (2-grid): 3.49272429615e-12
+
