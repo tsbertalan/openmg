@@ -495,7 +495,7 @@ def coarsen_A(A_in, coarsest_level, R, dense=False):
         else:
             A[0] = A_in
     else:
-        A[0] = sparse.lil_matrix(A_in)
+        A[0] = sparse.csr_matrix(A_in)
     for level in range(1, levels):
 #        print "creating A[%i]" % level
         # This is the Galerkin "RAP" coarse-grid operator
@@ -516,7 +516,7 @@ def poisson(n):
     s = tridiag(n, -1, 2, -1)
     i = sparse.eye(n, n)
     A = s + i * 2.0
-    return A
+    return sparse.csr_matrix(A)
 
 def poisson1D(n):
     x = -1
