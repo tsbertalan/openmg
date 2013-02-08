@@ -183,26 +183,21 @@ def iterative_solve(A, b, x, iterations, verbose=False):
 #    print x.shape
 #    help(x)
 #    x = x.reshape((N, ))
-    iteration = 0
     if verbose: print "starting gs,  %i iterations." % iterations
     for iteration in range(iterations):
-        if verbose:
-            currentpercent = np.round(100. * iteration / iterations, decimals=0)
-            last = currentpercent
-            if (currentpercent % 1 == 0) and (currentpercent != 0) and (currentpercent != last):
-                last = currentpercent
-                print "iterative progress: %i%%" % currentpercent
-        for i in range(N):  # [ 0 1 2 3 4 ... n-1 ]
-            if sparse.issparse(A):
-                x[i] = x[i] + (b[i] - flexible_mmult(
-                                           A.getrow(i), x.reshape((N, 1))
-                                       )
-                              ) / A.tocsr()[i, i]
-            else:
-                x[i] = x[i] + (b[i] - flexible_mmult(
-                                            A[i, :], x.reshape((N, 1))
-                                       )
-                              ) / A[i, i]
+        if sparse.issparse(A):
+            for i in range(N):
+                Aix = A[i,:] * x  # scipy 0.10 insists on making a copy
+                   # for this slice, which is about 60% of our wasted time.
+                   # v0.11 seems to have lil_matrix.getrowview(). But, for
+                   # production, this whole code should be written in C, C++,
+                   # or Fortran. So I will make no further efforts to make
+                   # the sparse version of OpenMG fast.
+                #for j in range(N):
+                #    Aix += A[i, j] * x[j]  
+                x[i] = x[i] + (b[i] - Aix) / A[i, i]
+        else:
+                x[i] = x[i] + (b[i] - np.dot(A[i, :], x.reshape((N, 1)))                                      ) / A[i, i]
     return x
 
 
@@ -508,15 +503,29 @@ def coarsen_A(A_in, coarsest_level, R, dense=False):
     return A
 
 
-def poisson(n):
+def poisson(N):
     '''Returns a sparse square coefficient matrix for the 1D Poisson equation.
     '''
     import scipy.sparse as sparse
-    from tridiag import tridiag
-    s = tridiag(n, -1, 2, -1)
-    i = sparse.eye(n, n)
-    A = s + i * 2.0
-    return sparse.csr_matrix(A)
+    #A = sparse.lil_matrix((N, N))
+    #for i in range(N):
+    #    A[i, i] = 4
+    #    if i > 1:
+    #        A[i, i-1] = -1
+    #    if i < N-1:
+    #        A[i, i+1] = -1
+    #i = sparse.eye(n, n)
+    #A = s + i * 2.0
+    #return sparse.csr_matrix(A)
+    i=0
+    main = sparse.eye(N, N) * 4
+    off = (sparse.eye(N-1, N-1) * -1).tocsr()
+    longPad = np.zeros((N, 1))
+    shortPad = np.zeros((N-1, 1))
+    top = sparse.vstack((sparse.hstack((shortPad, off)), longPad.T))
+    bottom = top.T
+    A = main + top + bottom
+    return A
 
 def poisson1D(n):
     x = -1

@@ -4,7 +4,7 @@ from numpy import *
 from scipy import *
 import scipy.sparse as sparse
 import numpy as np
-from openmg import mg_solve
+from openmg import mg_solve, iterative_solve_to_threshold
 
 def whoami():
     '''
