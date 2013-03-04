@@ -527,6 +527,7 @@ def poisson(N):
     A = main + top + bottom
     return A
 
+
 def poisson1D(n):
     x = -1
     y =  2
