@@ -2,17 +2,21 @@ import numpy as np
 import openmg as omg
 from scipy import sparse
 from time import time
-from sys import argv
+from sys import argv, stderr
 
 def main(N):
+    NX = NY = int(N ** 0.5)
+    if float(N) / NX / NY != 1:
+        print >> stderr, "N must be a perfect square. (N was given as %i)" % N
+        return 1
     dense = False  # Should we use dense matrices for multigrid?
                 # This is not useful for small problems like N=100
 
     #A = np.random.rand(N, N)  # this will make the multigrid algorithm diverge!
                             # (although the pure-iterative params will still work)
-    u_true = np.array([np.sin(x / 10.0) for x in range(N)])
+    u_true = np.random.rand(N).reshape((N, 1))
     if dense:
-        A = omg.poisson1D(N)  # a dense array for the 1D Poisson equation
+        A = omg.poisson2D(N)  # a dense array for the 2D Poisson equation. 5-point Laplacian.
         b = np.dot(A, u_true)
     else:
         A = omg.poisson(N)    # sparse 
@@ -24,7 +28,7 @@ def main(N):
     #help(omg.mg_solve)
 
     # use only the coarse solver:
-    params = {'problemshape': (N,), 'gridlevels': 1, 'verbose': False, 'threshold': threshold}
+    params = {'problemshape': (NX, NY), 'gridlevels': 1, 'verbose': False, 'threshold': threshold}
     a = time()
     soln  = omg.coarse_solve(A, b)
     elapsed = time() - a
@@ -34,7 +38,7 @@ def main(N):
 
     # This Gauss-Seidel solver will be painfully slow for N larger than, say 200.
     # It's probably the main bottleneck in this process, and really should be written in C.
-    if N <= 200:
+    if N <= 256:
         a = time()
         soln  = omg.iterative_solve_to_threshold(A, b, np.zeros((N, 1)), threshold, verbose=False)[0]
         elapsed = time() - a
@@ -43,7 +47,7 @@ def main(N):
 
     # use a 2-grid pattern
     g = 3  # number of gridlevels
-    params = {'problemshape': (N,), 'gridlevels': g, 'cycles': 10,
+    params = {'problemshape': (NX, NY), 'gridlevels': g, 'cycles': 10,
             'iterations': 2,       'verbose': False, 'dense': dense, 'threshold': threshold}
     a = time()
     mg_output  = omg.mg_solve(A, b, params)
@@ -57,7 +61,7 @@ def main(N):
 if __name__=="__main__":
     args = [int(i) for i in argv[1:]]
     if len(args) == 0:
-        args = [200]
+        args = [256]
     print "N    method     norm            seconds cycles"
     for N in args:
         main(N)
