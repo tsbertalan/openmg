@@ -11,6 +11,15 @@ isolocaltime = localtime()
 #    iterative solvers in here we could use
 sparsenorm = sparse.base.np.linalg.norm
 
+defaults = {
+        'problemshape': (200,),
+        'gridlevels': 2,
+        'iterations': 1,
+        'coarsest_level': 1,
+        'verbose': False,         
+        'threshold': 0.1,
+        'cycles': 0,
+}
 
 def dense_restriction(N, shape):
     '''
@@ -304,6 +313,7 @@ def mg_solve(A_in, b, parameters):
             cycles          Defaults to 0,  which is interpreted as meaning
                             that v-cycles should be continued until the
                             residual norm falls below threshold.
+        A sample parameters dictionary is available at openmg.defaults .
     Returns a tuple containing:
         the solution vector
         a dictionary of interesting information about
