@@ -1,7 +1,6 @@
 import matplotlib
 from matplotlib import *
 from matplotlib.pyplot import figure, title, savefig
-import enthought.mayavi.mlab as mlab
 #from enthought.mayavi.api import OffScreenEngine
 #from enthought.mayavi.modules.api import Outline, IsoSurface
 
@@ -10,6 +9,7 @@ import enthought.mayavi.mlab as mlab
 
 
 def make_3d_graph(scalarfield, filename):
+    import enthought.mayavi.mlab as mlab
     mlab.figure(bgcolor=(1,1,1),fgcolor=(0,0,0))
     #mlab.options.offscreen = True
     #win = e.new_scene()
@@ -33,6 +33,7 @@ def make_3d_graph(scalarfield, filename):
 
 def make_multiple_3d_graphs(data, filename):
     '''data is a list of 3d scalar fields. filename is a string, probably ending in .png'''
+    import enthought.mayavi.mlab as mlab
     mlab.figure(bgcolor=(1,1,1),fgcolor=(0,0,0),size=(1000,600))
 
 #    f = mlab.gcf()
