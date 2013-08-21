@@ -206,6 +206,7 @@ def iterative_solve(A, b, x, iterations, verbose=False):
                 #    Aix += A[i, j] * x[j]  
                 x[i] = x[i] + (b[i] - Aix) / A[i, i]
         else:
+            for i in range(N):
                 x[i] = x[i] + (b[i] - np.dot(A[i, :], x.reshape((N, 1)))                                      ) / A[i, i]
     return x
 
