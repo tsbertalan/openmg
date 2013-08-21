@@ -608,6 +608,10 @@ class TestOpenMG(unittest.TestCase):
             showexception()
 
 
-if __name__ == '__main__':
-    unittest.main(verbosity=2)
+def doTests():
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestOpenMG)
+    unittest.TextTestRunner(verbosity=2).run(suite)
 
+
+if __name__ == '__main__':
+    doTests()

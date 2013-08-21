@@ -1,11 +1,15 @@
 #from numpy import *
 #from tom_viz import *
+from time import strftime, localtime
+
+from sys import exit
 import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
-from sys import exit
 
-from time import strftime, localtime
+from solvers import iterative_solve, iterative_solve_to_threshold, coarse_solve
+from tools import flexible_mmult, getresidual
+
 isolocaltime = localtime()
 #import scipy.sparse.linalg as sparselinalg # there are some alternative
 #    iterative solvers in here we could use
@@ -169,129 +173,6 @@ def coarsen(u_fine):
     return u_coarse
 
 
-def coarse_solve(A, b):
-    '''Uses scipy.sparse.numpy.linalg.solve or np.linalg.solve, depending on
-    the sparsity of A.
-    '''
-    if sparse.issparse(A):
-        #toreturn = sparse.sputils.np.linalg.solve(A, b)
-        #toreturn = sparse.linalg.dsolve.spsolve(A, b)
-        toreturn = splinalg.spsolve(A,b)
-    else:
-        toreturn = np.linalg.solve(A, b)
-    return np.ravel(toreturn)
-
-
-def iterative_solve(A, b, x, iterations, verbose=False):
-    '''
-    An implementation of Gauss-Seidel iterative solution.
-    Will stop when the given number of iterations are exausted.
-    '''
-    # TODO: I should change this to (A, b, iterations, x='none', verbose=False)
-    N = b.size
-#    print x.shape
-#    help(x)
-#    x = x.reshape((N, ))
-    if verbose: print "starting gs,  %i iterations." % iterations
-    for iteration in range(iterations):
-        if sparse.issparse(A):
-            for i in range(N):
-                Aix = A[i,:] * x  # scipy 0.10 insists on making a copy
-                   # for this slice, which is about 60% of our wasted time.
-                   # v0.11 seems to have lil_matrix.getrowview(). But, for
-                   # production, this whole code should be written in C, C++,
-                   # or Fortran. So I will make no further efforts to make
-                   # the sparse version of OpenMG fast.
-                #for j in range(N):
-                #    Aix += A[i, j] * x[j]  
-                x[i] = x[i] + (b[i] - Aix) / A[i, i]
-        else:
-            for i in range(N):
-                x[i] = x[i] + (b[i] - np.dot(A[i, :], x.reshape((N, 1)))                                      ) / A[i, i]
-    return x
-
-
-def flexible_mmult(x, y):
-    '''Dot two 2D arrays
-    '''
-    if (not sparse.issparse(x)) and (not sparse.issparse(y)):
-        return np.dot(x, y)
-    else:
-        # we can do overloaded-asterisk multiplication
-        # as long as at least one matrix is sparse
-        return x * y
-
-
-def iterative_solve_to_threshold(A, b, x, threshold, verbose=False):
-    '''
-    An implementation of Gauss-Seidel iterative solution.
-    Will stop when the norm of the residual is below the given threshold.
-    However,  Gauss-Seidel doesn't always converge,  so it might never return.
-    '''
-    iteration = 0
-    N = len(b)
-    if sparse.issparse(A):
-        for i in range(b.size):  # [ 0 1 2 3 4 ... n-1 ]
-            x[i] = x[i] + (b[i] - flexible_mmult(
-                                    A.getrow(i), x.reshape((N, 1))
-                                  )
-                          ) / A[i, i]
-    else:
-        for i in range(b.size):  # [ 0 1 2 3 4 ... n-1 ]
-            x[i] = x[i] + (b[i] - flexible_mmult(
-                                    A[i, :].reshape((1, N)), x.reshape((N, 1))
-                                  )
-                          ) / A[i, i]
-    norm = np.linalg.norm(getresidual(b, A, x, N))
-    while norm > threshold:
-        if verbose:
-            if not iteration % 100:
-                print 'iteration', iteration, ': norm is', norm
-        iteration += 1
-        if sparse.issparse(A):
-            for i in range(b.size):
-                x[i] = x[i] + (b[i] - flexible_mmult(
-                                        A.getrow(i), x.reshape((N, 1))
-                                      )
-                              ) / A[i, i]
-        else:
-            for i in range(b.size):
-                x[i] = x[i] + (b[i] - flexible_mmult(
-                                        A[i, :].reshape((1, N)),
-                                        x.reshape((N, 1))
-                                      )
-                              ) / A[i, i]
-        norm = np.linalg.norm(getresidual(b, A, x, N))
-    if verbose: print "Finished iterative solver in %i iterations." % iteration
-    return (x, iteration)
-
-
-def slow_iterative_solve(A, b, x, iterations, verbose=False):
-    '''An implementation of Gauss-Seidel iterative solution.
-    Will stop when the given number of iterations are exausted.
-    Uses loops instead of flexible_mmult() for matrix multiplication.
-    If it were a Jacobi implementation, it might be easy to parallelize.
-    However, GS is inherently sequential (or so I hear).
-    But changing this to a Jacobi implementation later might not be too hard.
-    '''
-    iteration = 0
-    last = 0
-    for iteration in range(iterations):
-        currentpercent = np.round(100. * iteration / iterations, decimals=0)
-        if (currentpercent % 10 == 0) and (currentpercent != 0) and (currentpercent != last):
-            last = currentpercent
-            print "mg_solve_tom: iterative progress: %i%%" % currentpercent
-        for i in range(b.size):
-            lowersum = 0
-            for j in range(i):
-                lowersum += A[(i, j)] * x[j]
-            uppersum = 0
-            for j in range(i + 1, b.size):
-                uppersum += A[(i, j)] * x[j]
-            x[i] = (b[i] - lowersum - uppersum) / A[(i, i)]
-    return x
-
-
 def mg_solve(A_in, b, parameters):
     '''
     Main externally usable function.
@@ -425,12 +306,6 @@ def mg_solve(A_in, b, parameters):
     return (result, info_dict)
 
 
-def getresidual(b, A, x, N):
-    '''b and x are dense ndarrays; N is an int,  and A is a sparse matrix
-    '''
-    return b.reshape((N, 1)) - flexible_mmult(A, x.reshape((N, 1)))
-
-
 def amg_cycle(A, b, level, R, parameters, initial='None'):
     '''
     Internally used function that shows the actual multi-level solution method,
@@ -494,7 +369,6 @@ def coarsen_A(A_in, coarsest_level, R, dense=False):
     '''Returns a list.'''
     levels = coarsest_level + 1
     A = list(range(levels))
-#    print "creating A[0]"
     if dense:
         if sparse.issparse(A_in):
             A[0] = A_in.todense()
@@ -503,7 +377,6 @@ def coarsen_A(A_in, coarsest_level, R, dense=False):
     else:
         A[0] = sparse.csr_matrix(A_in)
     for level in range(1, levels):
-#        print "creating A[%i]" % level
         # This is the Galerkin "RAP" coarse-grid operator
         # A_H = R * A_h * R^T
         # or
@@ -512,101 +385,3 @@ def coarsen_A(A_in, coarsest_level, R, dense=False):
                                   flexible_mmult(R[level-1], A[level-1]),
                                                              R[level-1].T)
     return A
-
-
-def poisson(N):
-    '''Returns a sparse square coefficient matrix for the 1D Poisson equation.
-    '''
-    import scipy.sparse as sparse
-    #A = sparse.lil_matrix((N, N))
-    #for i in range(N):
-    #    A[i, i] = 4
-    #    if i > 1:
-    #        A[i, i-1] = -1
-    #    if i < N-1:
-    #        A[i, i+1] = -1
-    #i = sparse.eye(n, n)
-    #A = s + i * 2.0
-    #return sparse.csr_matrix(A)
-    i=0
-    main = sparse.eye(N, N) * 4
-    off = (sparse.eye(N-1, N-1) * -1).tocsr()
-    longPad = np.zeros((N, 1))
-    shortPad = np.zeros((N-1, 1))
-    top = sparse.vstack((sparse.hstack((shortPad, off)), longPad.T))
-    bottom = top.T
-    A = main + top + bottom
-    return A
-
-
-def poisson1D(n):
-    x = -1
-    y =  2
-    z = -1
-    x = x * np.ones(n - 1)
-    z = z * np.ones(n - 1)
-    y = y * np.ones(n)
-    return np.diag(x, -1) + np.diag(y) + np.diag(z, 1)
-    
-
-def poisson2d((NX, NY)):
-    '''Returns a dense square coefficient matrix for the 2D Poisson equation.
-    '''
-    N = NX * NY
-    main = np.eye(N) * -4
-    oneup = np.hstack((
-                np.zeros((NX * NY, 1)),
-                np.vstack((
-                    np.eye(NX * NY - 1),
-                    np.zeros((1, NX * NY - 1))
-                ))
-            ))
-    twoup = np.hstack((
-                np.zeros((NX * NY, 1 + NX)),
-                np.vstack((
-                    np.eye(NX * NY - 1 - NX),
-                    np.zeros((1 + NX, NX * NY - 1 - NX))
-                ))
-            ))
-    return main + oneup + twoup + oneup.T + twoup.T
-
-
-def poisson3d((NX, NY, NZ)):
-    '''Returns a dense square coefficient matrix, for the 3D Poisson equation.
-    '''
-    N = NX * NY
-    main = np.eye(N) * -6
-    oneup = np.hstack((
-                np.zeros((NX * NY, 1)),
-                np.vstack((
-                    np.eye(NX * NY - 1),
-                    np.zeros((1, NX * NY - 1))
-                ))
-            ))
-    twoup = np.hstack((
-                np.zeros((NX * NY, 1 + NX)),
-                np.vstack((
-                    np.eye(NX * NY - 1 - NX),
-                    np.zeros((1 + NX, NX * NY - 1 - NX))
-                ))
-            ))
-    threeup = np.hstack((
-                np.zeros((NX * NY, 1 + NX)),
-                np.vstack((
-                    np.eye(NX * NY - 1 - NX),
-                    np.zeros((1 + NX, NX * NY - 1 - NX))
-                ))
-            ))
-    return main + oneup + twoup + oneup.T + twoup.T + threeup + threeup.T
-
-
-def setup_variables(size):
-    '''For some testing purpose. Probably unneeded now.
-    '''
-    u_zeros = np.zeros((size, 1))
-    domain = np.ones((size))
-    for i in range(domain.size):  # [0 1 2 ... domain.size-1]
-        domain[i] = i * periods * 2 * 3.1415 / domain.size
-    u_actual = (np.cos(domain))
-    b = flexible_mmult(A_function(0), u_actual)
-    return u_zeros, A_function, u_actual, b
