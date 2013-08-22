@@ -97,7 +97,7 @@ def poisson3D((NX, NY, NZ)):
 def poissonnd(shape):
     '''Using a 1-, 2-, or 3-element tuple for the shape,
     return a dense square Poisson matrix for that question.
-    # TODO (Tom) These should use a stencils instead, like PyAMG's examples.
+    # TODO These should use a stencils instead, like PyAMG's examples.
     '''
     if len(shape) == 0:
         print 'Only 1, 2 or 3 dimensions are allowed.'

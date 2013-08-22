@@ -4,7 +4,17 @@ from scipy import sparse
 from time import time
 from sys import argv
 
-def main(N):
+
+def main():
+    args = [int(i) for i in argv[1:]]
+    if len(args) == 0:
+        args = [200]
+    print "N    method     norm            seconds cycles"
+    for N in args:
+        demo(N)
+        print
+
+def demo(N):
     ## view the docstring
     #help(omg.mg_solve)
 
@@ -64,10 +74,4 @@ def main(N):
 
 
 if __name__=="__main__":
-    args = [int(i) for i in argv[1:]]
-    if len(args) == 0:
-        args = [200]
-    print "N    method     norm            seconds cycles"
-    for N in args:
-        main(N)
-        print
+    main()

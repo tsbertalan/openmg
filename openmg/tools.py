@@ -26,6 +26,14 @@ def flexible_mmult(x, y):
 
 
 def dictUpdateNoClobber(updateDict, targetDict):
+    """Like dict.update, but will not clobber existing entries.
+    >>> adict = {'a': 'A'}
+    >>> 'b' in adict or 'c' in adict
+    False
+    >>> out = dictUpdateNoClobber({'b': 'B', 'c': 'C'}, adict)
+    >>> 'b' in adict and 'c' in adict
+    True
+    """
     for key, value in updateDict.iteritems():
         dictAddNoClobber(targetDict, key, value)
     return targetDict
@@ -33,7 +41,7 @@ def dictUpdateNoClobber(updateDict, targetDict):
 
 def dictAddNoClobber(dictionary, key, value):
     """
-    Can be used "in-place"
+    Add entries to a dictionary only if they're not already there. 
     >>> adict = {"hello": 42} 
     >>> out = dictAddNoClobber(adict, "huh", "no")
     >>> "huh" in adict and "huh" in out
@@ -43,6 +51,12 @@ def dictAddNoClobber(dictionary, key, value):
         dictionary[key] = value
     return dictionary
 
+
+def product(iterableThing):
+    out = 1
+    for thing in iterableThing:
+        out *= thing
+    return out
 
 if __name__ == '__main__':
     import doctest

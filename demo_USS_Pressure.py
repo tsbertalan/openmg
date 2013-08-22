@@ -240,7 +240,7 @@ verbose = False
 threshold = .00021 # When should the v-cycling stop?
 repeats = 4
 gridlevelss = [2,] # there are two s's on this and some other vectors just below this because it had to be a plural of a plural.
-problemscales = [8,]
+problemscales = [6,]
 iterationss = [1,]
 pre_iterationss = [1,]
 post_iterationss = [0,]
@@ -346,7 +346,7 @@ if False:
     print '    problemscale in',problemscales
     print '    graph_pressure in',graph_pressures
 #Generate a list of all parameter combinations using vectors (lists) from above.
-parameterslist = range(0)
+parameterslist = []
 for cycles in cycless:
     for gridlevels in gridlevelss:
         coarsest_level = gridlevels-1
