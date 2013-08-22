@@ -41,9 +41,9 @@ def main(N):
     ##   It's probably the main bottleneck in this process, and really should be written in C.
     if N <= 200:
         start = time()
-        soln = omg.iterative_solve_to_threshold(A, b, np.zeros((N, 1)),
+        soln = omg.smooth_to_threshold(A, b, np.zeros((N, 1)),
                                                 params['threshold'],
-                                                verbose=params['verbose'])[0]
+                                                verbose=params['verbose'])
         elapsed = time() - start
         print N, "Gauss-Seidel", np.linalg.norm(omg.tools.getresidual(b, A, soln, N)), elapsed
 

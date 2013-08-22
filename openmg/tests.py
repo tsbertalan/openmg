@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
-from openmg import flexible_mmult, mg_solve, iterative_solve, \
-                   iterative_solve_to_threshold, tools
+from openmg import flexible_mmult, mg_solve, smooth, \
+                   smooth_to_threshold, tools
 import geometry
 from sys import _getframe, exc_info
 import logging
@@ -59,11 +59,10 @@ class TestOpenMG(unittest.TestCase):
             u_actual = np.sin(np.array(range(int(size))) * 3.0 / size).T
             A = geometry.poissonnd((size,))
             b = flexible_mmult(A, u_actual)
-            u_iterative = iterative_solve(A, b, u_zeros, iterations=1)
+            u_iterative = smooth(A, b, u_zeros, iterations=1)
             parameters = {'coarsest_level': gridlevels - 1,
                           'problemshape': (problemscale, problemscale, problemscale),
                           'gridlevels': gridlevels,
-#                           'verbose': True,
                           'threshold': 8e-3,
                           'saveProgress': True,
                           }
@@ -172,7 +171,7 @@ class TestOpenMG(unittest.TestCase):
             csvfile.flush()
             verbose = False
             for iterations in iterationslist:
-                solutions.append(iterative_solve(A,
+                solutions.append(smooth(A,
                                                  b,
                                                  np.zeros((N,)),
                                                  iterations,
@@ -308,7 +307,7 @@ class TestOpenMG(unittest.TestCase):
     
             verbose = False
             for iterations in range(1, finaliterations):
-                solutions[iterations] = iterative_solve(A,
+                solutions[iterations] = smooth(A,
                                                         b,
                                                         np.zeros(NX ** 2),
                                                         iterations,
@@ -352,7 +351,7 @@ class TestOpenMG(unittest.TestCase):
             x_init = np.zeros((N,))
             threshold = 0.0001
             verbose = False
-            (x, info_dict) = iterative_solve_to_threshold(A, b, x_init,
+            x = smooth_to_threshold(A, b, x_init,
                                                         threshold,
                                                         verbose=verbose)
             if self.verbose:

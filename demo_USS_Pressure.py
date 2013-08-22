@@ -10,7 +10,7 @@ import logging
 # from scipy import *
 import scipy.sparse as sparse
 import numpy as np
-from openmg import mg_solve, iterative_solve_to_threshold
+from openmg import mg_solve, smooth_to_threshold
 
 def whoami():
     '''
@@ -141,13 +141,13 @@ def testgrid(parameters):
 
             info_dict['solverstring'] = '%igrid-%iiter-%icells%sthreshold-%icycles' % (gridlevels,iterations,N,threshold,cycles)
         elif solver == 'gs':                                            ##Our Gauss-Seidel iterative solver
-            (u,gs_iterations) =   iterative_solve_to_threshold(LHS, q+Qa, np.zeros((q.size,)), threshold,verbose=verbose)
+            (u,gs_iterations) =   smooth_to_threshold(LHS, q+Qa, np.zeros((q.size,)), threshold,verbose=verbose)
             info_dict['solverstring']='GaussSeidel-%iiter-%icells' % (gs_iterations,N)
             info_dict['cycle']=0
             info_dict['norm']=np.linalg.norm(q+Qa-np.dot(LHS,u))
         elif solver == 'gs_xiter':                                            ##Our Gauss-Seidel iterative solver, with a specified number of iterations
-            #def iterative_solve(A,b,x,iterations,verbose=False):
-            u =   iterative_solve(LHS, q+Qa, np.zeros((q.size,)), iterations,verbose)
+            #def smooth(A,b,x,iterations,verbose=False):
+            u =   smooth(LHS, q+Qa, np.zeros((q.size,)), iterations,verbose)
             info_dict={}
             gs_iterations = iterations
             info_dict['solverstring']='GaussSeidel-%iiter-%icells' % (gs_iterations,N)
@@ -248,6 +248,7 @@ solvers = ['mmg',]
 denses = [False,]
 cycless =[0,] # if cycles=0 (i.e., cycless = [0,] ), OpenMG will do v-cycles until converged, as defined by threshold
 graph_pressures = [False,]
+give_infos = [True,]
 
 ###############################################################################
 # Definitions of Tests
@@ -356,12 +357,23 @@ for cycles in cycless:
                         for solver in solvers:
                             for problemscale in problemscales:
                                 for graph_pressure in graph_pressures:
-                                    #if solver == 'direct' and problemscale >= 20: #might not alwasy be necessary. But our cores are only 2.40 GHz.
-                                        #pass
-                                    #elif solver == 'gs' and problemscale >= 20:
-                                        #pass
-                                    #else:
-                                    parameterslist.append({'graph_pressure':graph_pressure,'iterations':iterations,'dense':dense,'solver':solver,'problemscale':problemscale,'coarsest_level':coarsest_level,'gridlevels':gridlevels,'problemshape':(problemscale,problemscale,problemscale),'threshold':threshold,'verbose':verbose,'description':test_descriptions,'cycles':cycles,'pre_iterations':pre_iterations,'post_iterations':post_iterations})
+                                    for give_info in give_infos:
+                                        #if solver == 'direct' and problemscale >= 20: #might not alwasy be necessary. But our cores are only 2.40 GHz.
+                                            #pass
+                                        #elif solver == 'gs' and problemscale >= 20:
+                                            #pass
+                                        #else:
+                                        parameterslist.append({'graph_pressure':graph_pressure,
+                                                               'iterations':iterations,'dense':dense,
+                                                               'solver':solver,'problemscale':problemscale,
+                                                               'coarsest_level':coarsest_level,'gridlevels':gridlevels,
+                                                               'problemshape':(problemscale,problemscale,problemscale),
+                                                               'threshold':threshold,'verbose':verbose,
+                                                               'description':test_descriptions,'cycles':cycles,
+                                                               'pre_iterations':pre_iterations,
+                                                               'post_iterations':post_iterations,
+                                                               'give_info':give_info
+                                                               })
 parameterslist_once = list(parameterslist) # see this lovely article: http://henry.precheur.org/python/copy_list
 repeats = repeats.__abs__() # to overcome excessive cleverness
 for repeat in range(1,repeats):

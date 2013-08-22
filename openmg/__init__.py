@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
 
-from solvers import iterative_solve, iterative_solve_to_threshold, coarse_solve
+from solvers import smooth, smooth_to_threshold, coarse_solve
 import tools
 import geometry
 flexible_mmult = tools.flexible_mmult
@@ -135,27 +135,6 @@ def restrictions(N, problemshape, coarsest_level, dense=False, verbose=False):
     return R
 
 
-def interpolate(u_coarse):
-    '''No longer used. Only works for 1D problems,  anyway.
-    Instead,  premultiply u_coarse by the transpose of R[level].
-    '''
-    N = u_coarse.size * 2
-    u_fine = empty(N)
-    u_fine[0::2] = u_coarse
-    u_fine[1:N - 1:2] = (u_fine[0:N - 2:2] + u_fine[2::2]) / 2
-    u_fine[-1] = 2 * u_fine[-2] - u_fine[-3]
-    return u_fine
-
-
-def coarsen(u_fine):
-    '''No longer used. Only works for 1D problems,  anyway.
-    Instead,  premultiply u_coarse by R[level].
-    '''
-    u_coarse = np.empty(u_fine.size * 0.5)
-    u_coarse = u_fine[::2]
-    return u_coarse
-
-
 defaults = {
     'problemshape': (200,),
     'gridlevels': 2,
@@ -275,7 +254,7 @@ def mg_solve(A_in, b, parameters):
         return result
 
 
-def amg_cycle(A, b, level, R, parameters, initial='None'):
+def amg_cycle(A, b, level, R, parameters, initial=None):
     '''
     Internally used function that shows the actual multi-level solution method,
     through a recursive call within the "level < coarsest_level" block, below.
@@ -284,12 +263,13 @@ def amg_cycle(A, b, level, R, parameters, initial='None'):
         dictionary of interesting things
     '''
     verbose = parameters['verbose']
-    if initial == 'None':
+    if initial is None:
         initial = np.zeros((b.size, ))
-    coarsest_level = parameters['gridlevels'] - 1
     N = b.size
-    if level < coarsest_level:
-        u_apx = iterative_solve(A[level], b, initial,
+    
+    # The general case is a recursive call. It comprises a smoothing
+    if level < parameters['coarsest_level']:
+        u_apx = smooth(A[level], b, initial,
                                 parameters['pre_iterations'], verbose=verbose)
         b_coarse = flexible_mmult(R[level], b.reshape((N, 1)))
         NH = len(b_coarse)
@@ -306,8 +286,9 @@ def amg_cycle(A, b, level, R, parameters, initial='None'):
                                       parameters,
                                      )[0]
         correction = (flexible_mmult(R[level].transpose(), coarse_correction.reshape((NH, 1)))).reshape((N, ))
+        
         if parameters['post_iterations'] > 0:
-            u_out = iterative_solve(A[level],
+            u_out = smooth(A[level],
                                     b,
                                     u_apx + correction,
                                     parameters['post_iterations'],
@@ -315,10 +296,12 @@ def amg_cycle(A, b, level, R, parameters, initial='None'):
         else:
             u_out = u_apx + correction
         norm = sparse.base.np.linalg.norm(tools.getresidual(b, A[level], u_out, N))
+    
     else:
         norm = 0
         if verbose: print "direct solving at level %i" % level
         u_out = coarse_solve(A[level], b.reshape((N, 1)))
+        
     return (u_out, {'norm': norm})
 
 #def coarsen_vector(): # it might be nice to define something like this,
