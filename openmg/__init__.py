@@ -1,29 +1,12 @@
-#from numpy import *
-#from tom_viz import *
-from time import strftime, localtime
-
-from sys import exit
 import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
 
 from solvers import iterative_solve, iterative_solve_to_threshold, coarse_solve
-from tools import flexible_mmult, getresidual
+import tools
+import geometry
+flexible_mmult = tools.flexible_mmult
 
-isolocaltime = localtime()
-#import scipy.sparse.linalg as sparselinalg # there are some alternative
-#    iterative solvers in here we could use
-sparsenorm = sparse.base.np.linalg.norm
-
-defaults = {
-        'problemshape': (200,),
-        'gridlevels': 2,
-        'iterations': 1,
-        'coarsest_level': 1,
-        'verbose': False,         
-        'threshold': 0.1,
-        'cycles': 0,
-}
 
 def dense_restriction(N, shape):
     '''
@@ -168,105 +151,93 @@ def coarsen(u_fine):
     '''No longer used. Only works for 1D problems,  anyway.
     Instead,  premultiply u_coarse by R[level].
     '''
-    u_coarse = empty(u_fine.size * 0.5)
+    u_coarse = np.empty(u_fine.size * 0.5)
     u_coarse = u_fine[::2]
     return u_coarse
 
 
+defaults = {
+    'problemshape': (200,),
+    'gridlevels': 2,
+    'verbose': False,         
+    'threshold': 0.1,
+    'cycles': 0,
+    'saveProgress': False,
+    'pre_iterations': 1,
+    'post_iterations': 0,
+    'dense': False,
+    'give_info': False,
+}
 def mg_solve(A_in, b, parameters):
     '''
     Main externally usable function.
     Arguments:
         A_in        the coefficient matrix
         b           the righthand side
-        a parameters dictionary,  including these fields:
-            problemshape    a tuple describing the shape of the domain
-            gridlevels      how many levels to generate in the hierarchy.
+        parameters  a dictionary,  including these fields:
+          required:
+            problemshape      a tuple describing the shape of the domain
+            gridlevels        how many levels to generate in the hierarchy.
 
-        Some optional extra parameters to include in the dictionary include:
-            iterations      how many iterations to use in the pre-smoother.
-                            Usually only 1 is fine.
-            coarsest_level  Defaults to gridlevels - 1
-                            an int larger than 0 denoting the level at which
-                            to use coarse_solve().
-            verbose         Defaults to False. Print a bunch of stuff.
-            threshold       Defaults to .1 . Tolerance for doing v-cycles
-                            without an explicit number of cycles to perform.
-            cycles          Defaults to 0,  which is interpreted as meaning
-                            that v-cycles should be continued until the
-                            residual norm falls below threshold.
+          optional:
+            coarsest_level=gridlevels - 1
+                              an int larger than 0 denoting the level at which
+                              to use coarse_solve().
+            verbose=False     Whether to print progres information.
+            threshold=.1      Absolute tolerance for doing v-cycles
+                              without an explicit number of cycles to perform
+                              (i.e., for cycles=0).
+            cycles=0          0 is interpreted as meaning
+                              that v-cycles should be continued until the
+                              residual norm falls below threshold.
+            pre_iterations=1  How many iterations to use in the pre-smoother.
+            post_iterations=0 How many iterations to use in the post-smoother.
+            give_info=False   Whether to return the info_dict
+            
         A sample parameters dictionary is available at openmg.defaults .
-    Returns a tuple containing:
-        the solution vector
-        a dictionary of interesting information about
-        how the solution was calculated
+    
+    
+    if give_info, returns a tuple containing:
+        result        the solution vector
+        info_dict     a dictionary of interesting information about
+                      how the solution was calculated
+    else, just returns result.
     '''
     # unpack the parameters into the local namespace:
-    exec ', '.join(parameters) + ',  = parameters.values()'
-    if 'coarsest_level' not in parameters: coarsest_level = gridlevels - 1
-    if 'verbose'        not in parameters: verbose = False
-    if 'threshold'      not in parameters: threshold = .1
-    if 'cycles'         not in parameters: cycles = 0
-    if 'dense'          not in parameters:
-        dense = False
-        parameters['dense'] = False
-    if 'iterations'     not in parameters:
-        if 'pre_iterations' not in parameters:
-            pre_iterations = 1
-            parameters['pre_iterations'] = 1
-            iterations = 1
-            parameters['iterations'] = 1
-        else:
-            iterations = pre_iterations
-            parameters['iterations'] = pre_iterations
-    else:
-        if 'pre_iterations' not in parameters:
-            pre_iterations = iterations
-            parameters['pre_iterations'] = iterations
-        else:
-            pass
-    if 'post_iterations' not in parameters:
-        parameters['post_iterations'] = 0
-
-    if verbose: print "Doing a(n) %i-grid scheme." % gridlevels
-
-    if verbose:
-        if dense:
-            sparsity = 'dense'
-        else:
-            sparsity = 'sparse'
-        print "Generating restriction matrices; using %s mechanism." % sparsity
-
+    if 'gridlevels' not in parameters: gridlevels = 2
+    problemshape = parameters['problemshape']
+    gridlevels = parameters['gridlevels']
+    defaults['coarsest_level'] = gridlevels - 1
+    tools.dictUpdateNoClobber(defaults, parameters)
+    
+    exec ', '.join(parameters) + ',  = parameters.values()'  # unpack params locally    
+    
     # A list of restriction matrices for each level
+    if verbose: print "Generating restriction matrices; dense=%s" % dense
     # their transposes are prolongation matrices:
     R = restrictions(b.size,
                      problemshape,
                      coarsest_level,
                      dense=dense,
                      verbose=verbose)
-    if verbose: print "Generating coefficient matrices using Galerkin expression, using %s mechanism..." % sparsity
+
     # a list of coefficient matrices; defined using R:
+    if verbose: print "Generating coefficient matrices; dense=%s" % dense,
     A = coarsen_A(A_in,
                   coarsest_level,
                   R,
                   dense=dense)
-    if verbose: print '... got A with length %i.' % len(A)
     cycle = 1
+    if verbose: print '... made %i A matrices' % len(A)
+    
     if verbose: print 'calling amg_cycle No.%i' % cycle
     (result, info_dict) = amg_cycle(A, b, 0, R, parameters)
-    if verbose: print 'info_dict from amg_cycle has these fields: ' + (',  '.join(info_dict))
-    exec ', '.join(info_dict) + ',  = info_dict.values()'
+    
+    norm = info_dict['norm']
     if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
-    isodate = strftime('%Y%m%d', isolocaltime)
-    isotime = strftime('T%H%M%S', isolocaltime)
-    cycles_progress_file_name = 'output/cyclesvsresid-%s%s.csv' % (isodate,
-                                                                   isotime)
-    cycles_progress_file = open(cycles_progress_file_name, 'a')
-#    cycles_progress_file.write(', '.join(parameters))
-#    cycles_progress_file.write(', '.join(parameters.values()))
-    cycles_progress_file.write('cycle, residual_norm\n')
-    cycles_progress_file.write('%d, %.012f\n' % (cycle, norm))
-    cycles_progress_file.flush()
+    if saveProgress:
+        cycles_progress_file = tools.startProgressFile(cycle, norm)
+    
     if cycles > 0:  # Do v-cycles until we're past the assigned number.
         # Set cycless = [0, ] in the test definition in time_test_grid.py
         # to allow cycles to continue until convergence,
@@ -280,10 +251,13 @@ def mg_solve(A_in, b, parameters):
                                             R,
                                             parameters,
                                             initial=result)
-            exec ', '.join(info_dict) + ',  = info_dict.values()'
-            cycles_progress_file.write('%d, %.012f\n' % (cycle, norm))
-            cycles_progress_file.flush()
+            
+            norm = info_dict['norm']
             if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
+            if saveProgress:
+                cycles_progress_file.write('%d, %.012f\n' % (cycle, norm))
+                cycles_progress_file.flush()
+            
     else:  # Do v-cycles until the solution has converged
         while norm > threshold:
             cycle += 1
@@ -294,16 +268,21 @@ def mg_solve(A_in, b, parameters):
                                             R,
                                             parameters,
                                             initial=result)
-            if verbose: print 'result shape is', result.shape
-            exec ', '.join(info_dict) + ',  = info_dict.values()'
-            cycles_progress_file.write('%d, %.012f\n' % (cycle, norm))
-            cycles_progress_file.flush()
+            
+            norm = info_dict['norm']
             if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
+            if saveProgress:
+                cycles_progress_file.write('%d, %.012f\n' % (cycle, norm))
+                cycles_progress_file.flush()
+
     info_dict['cycle'] = cycle
     info_dict['norm'] = norm
-    if verbose: print 'Returning mg_solve after %i cycle(s) with norm, ' % cycle, norm
-    cycles_progress_file.close()
-    return (result, info_dict)
+    if verbose: print 'Returning mg_solve after %i cycle(s) with norm %f' % (cycle, norm)
+    if saveProgress: cycles_progress_file.close()
+    if parameters["give_info"]:
+        return (result, info_dict)
+    else:
+        return result
 
 
 def amg_cycle(A, b, level, R, parameters, initial='None'):
@@ -314,25 +293,20 @@ def amg_cycle(A, b, level, R, parameters, initial='None'):
         solution
         dictionary of interesting things
     '''
-    if parameters['verbose']: print "unpacking %i parameters" % len(parameters)
-    # unpack the parameters into the local namespace:
-    exec ', '.join(parameters) + ',  = parameters.values()'
+    exec ', '.join(parameters) + ',  = parameters.values()'  # unpack params locally
     if initial == 'None':
         initial = np.zeros((b.size, ))
     coarsest_level = gridlevels - 1
     N = b.size
     if level < coarsest_level:
-        if verbose: print "level,  %i,  is less than coarsest_level,  %i." % (level, coarsest_level)
         u_apx = iterative_solve(A[level], b, initial, pre_iterations, verbose=verbose)
-        if verbose: print "coarsening RHS"
         b_coarse = flexible_mmult(R[level], b.reshape((N, 1)))
         NH = len(b_coarse)
         b_coarse.reshape((NH, ))
-        if verbose: print "finding residual"
-        residual = getresidual(b, A[level], u_apx, N)
-        if verbose: print "coarsening residual"
-        coarse_residual = flexible_mmult(R[level], residual.reshape((N, 1))).reshape((NH,))
+        
         if verbose: print "calling amg_cycle recursively at level %i" % level
+        residual = tools.getresidual(b, A[level], u_apx, N)
+        coarse_residual = flexible_mmult(R[level], residual.reshape((N, 1))).reshape((NH,))
         coarse_correction = amg_cycle(
                                       A,
                                       coarse_residual,
@@ -347,18 +321,13 @@ def amg_cycle(A, b, level, R, parameters, initial='None'):
                                     u_apx + correction,
                                     post_iterations,
                                     verbose=verbose)
-            if verbose: print 'shape of u_out after post-smoothing is ', u_out.shape
         else:
-            if verbose: print "adding u_apx with shape", u_apx.shape, "to correction with shape", correction.shape
             u_out = u_apx + correction
-            if verbose: print 'shape of u_out without post-smoothing is ', u_out.shape
-        norm = sparsenorm(getresidual(b, A[level], u_out, N))
+        norm = sparse.base.np.linalg.norm(tools.getresidual(b, A[level], u_out, N))
     else:
         norm = 0
         if verbose: print "direct solving at level %i" % level
         u_out = coarse_solve(A[level], b.reshape((N, 1)))
-        if verbose: print 'shape of u_out after coarse_solve is ', u_out.shape
-    if verbose: print "returning u_out with shape ", u_out.shape, " from mg_cycle at level ", level
     return (u_out, {'norm': norm})
 
 #def coarsen_vector(): # it might be nice to define something like this,

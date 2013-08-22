@@ -32,6 +32,8 @@ def poisson(N):
 
 
 def poisson1D(n):
+    if isinstance(n, tuple):
+        n = n[0]
     x = -1
     y =  2
     z = -1
@@ -41,7 +43,7 @@ def poisson1D(n):
     return np.diag(x, -1) + np.diag(y) + np.diag(z, 1)
     
 
-def poisson2d((NX, NY)):
+def poisson2D((NX, NY)):
     '''Returns a dense square coefficient matrix for the 2D Poisson equation.
     '''
     N = NX * NY
@@ -63,7 +65,7 @@ def poisson2d((NX, NY)):
     return main + oneup + twoup + oneup.T + twoup.T
 
 
-def poisson3d((NX, NY, NZ)):
+def poisson3D((NX, NY, NZ)):
     '''Returns a dense square coefficient matrix, for the 3D Poisson equation.
     '''
     N = NX * NY
@@ -90,6 +92,22 @@ def poisson3d((NX, NY, NZ)):
                 ))
             ))
     return main + oneup + twoup + oneup.T + twoup.T + threeup + threeup.T
+
+
+def poissonnd(shape):
+    '''Using a 1-, 2-, or 3-element tuple for the shape,
+    return a dense square Poisson matrix for that question.
+    # TODO (Tom) These should use a stencils instead, like PyAMG's examples.
+    '''
+    if len(shape) == 0:
+        print 'Only 1, 2 or 3 dimensions are allowed.'
+        exit()
+    elif len(shape) == 1:
+        return poisson1D(shape)
+    elif len(shape) == 2:
+        return poisson2D(shape)
+    elif len(shape) == 3:
+        return poisson3D(shape)
 
 
 if __name__ == '__main__':

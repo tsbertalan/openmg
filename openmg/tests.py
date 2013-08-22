@@ -1,7 +1,8 @@
 import unittest
 import numpy as np
 from openmg import flexible_mmult, mg_solve, iterative_solve, \
-                   iterative_solve_to_threshold
+                   iterative_solve_to_threshold, tools
+import geometry
 from sys import _getframe, exc_info
 import logging
 
@@ -38,90 +39,6 @@ def mpl_test_data(delta=0.25):
     return X, Y, Z
 
 
-def poissonnd(shape):
-    '''Using a 1-, 2-, or 3-element tuple for the shape,
-    return a dense square Poisson matrix for that question.
-    # TODO (Tom) These should use a stencils instead, like PyAMG's examples.
-    '''
-    if len(shape) == 0:
-        print 'Only 1, 2 or 3 dimensions are allowed.'
-        exit()
-    elif len(shape) == 1:
-        return poisson1d(shape)
-    elif len(shape) == 2:
-        return poisson2d(shape)
-    elif len(shape) == 3:
-        return poisson3d(shape)
-
-def poisson1d((n,)):
-    '''
-    Returns a square matrix.
-    '''
-    main = -2 * np.eye(n)
-    oneup = np.hstack((\
-                np.zeros((n, 1)), \
-                np.vstack((\
-                            np.eye(n - 1), \
-                            np.zeros((1, n - 1))\
-                         ))\
-                ))
-    return main + oneup + oneup.T
-
-def poisson2d((NX, NY)):
-    '''
-    Returns a dense square matrix.
-    '''
-    N = NX * NY
-    main = np.eye(N) * -4
-    oneup = np.hstack((\
-                np.zeros((NX * NY, 1)), \
-                np.vstack((\
-                    np.eye(NX * NY - 1), \
-                    np.zeros((1, NX * NY - 1))\
-                ))
-            ))
-    twoup = np.hstack((\
-                np.zeros((NX * NY, 1 + NX)), \
-                np.vstack((\
-                    np.eye(NX * NY - 1 - NX), \
-                    np.zeros((1 + NX, NX * NY - 1 - NX))\
-                ))
-            ))
-    return main + oneup + twoup + oneup.T + twoup.T
-
-def poisson3d((NX, NY, NZ)):
-    '''
-    Returns a dense square matrix.
-    # TODO (Tom) Currently, poisson3d is just a copy of poisson2d. Fix that.
-    It would make more sense to make these with stencils instead, like PyAMG's
-    examples do.
-    '''
-    N = NX * NY
-    main = np.eye(N) * -4
-    oneup = np.hstack((\
-                np.zeros((NX * NY, 1)), \
-                np.vstack((\
-                    np.eye(NX * NY - 1), \
-                    np.zeros((1, NX * NY - 1))\
-                ))
-            ))
-    twoup = np.hstack((\
-                np.zeros((NX * NY, 1 + NX)), \
-                np.vstack((\
-                    np.eye(NX * NY - 1 - NX), \
-                    np.zeros((1 + NX, NX * NY - 1 - NX))\
-                ))
-            ))
-    threeup = np.hstack((\
-                np.zeros((NX * NY, 1 + NX)), \
-                np.vstack((\
-                    np.eye(NX * NY - 1 - NX), \
-                    np.zeros((1 + NX, NX * NY - 1 - NX))\
-                ))
-            ))
-    return main + oneup + twoup + oneup.T + twoup.T
-
-
 class TestOpenMG(unittest.TestCase):
 
     def setUp(self):
@@ -135,33 +52,25 @@ class TestOpenMG(unittest.TestCase):
         trouble with 1D. This might bear investigation.
         '''
         try:
-            iterations = 5
             problemscale = 12
             size = problemscale ** 3
-            gridlevels = 2
+            gridlevels = 4
             u_zeros = np.zeros((size,))
             u_actual = np.sin(np.array(range(int(size))) * 3.0 / size).T
-            A = poissonnd((size,))
-            # print u_actual
-            # print A
-            # print "A (shape %s) is:" % (A.shape,)
-            # print A
-            # print "u_actual is %s." % u_actual
+            A = geometry.poissonnd((size,))
             b = flexible_mmult(A, u_actual)
-            # print "b is %s." % b
-            u_iterative = iterative_solve(A, b, u_zeros, iterations)
-            # u_slow=slow_iterative_solve(A,b,b,10)
+            u_iterative = iterative_solve(A, b, u_zeros, iterations=1)
             parameters = {'coarsest_level': gridlevels - 1,
                           'problemshape': (problemscale, problemscale, problemscale),
                           'gridlevels': gridlevels,
-                          'iterations': iterations,
-                          'verbose': False, }
-            u_mmg = mg_solve(A, b, parameters)[0]
-    #        make_graph("actual.png", "actual at n=%s" % size, u_actual)
-    #        make_graph("iterative.png", "iterative at n=%s" % size, u_iterative)
-    #        make_graph("multigrid.png", "mmg at n=%s" % size, u_mmg)
+#                           'verbose': True,
+                          'threshold': 8e-3,
+                          }
+            u_mmg = mg_solve(A, b, parameters)
             if self.verbose:
-                print 'norm is', (np.linalg.norm(getresidual(b, A, u_iterative.reshape((size, 1)), size))), 'Graphs not made.'
+                print 'norm is', (np.linalg.norm(tools.getresidual(b, A, u_iterative.reshape((size, 1)), size)))
+            residual_norm = np.linalg.norm(flexible_mmult(A, u_mmg) - b)
+            assert parameters['threshold'] > residual_norm
         except:
             showexception()
     
@@ -230,7 +139,7 @@ class TestOpenMG(unittest.TestCase):
                 data = np.random.random((N,))  # 1D white noise
             gif_output_name = 'spectral_solution_rate-%i_unknowns-%s_xscale-%s_solution.gif' % (N, spectralxscale, solutionname)
     
-            A = poissonnd((N,))
+            A = geometry.poissonnd((N,))
             b = flexible_mmult(A, data)
     
         #    Prepare for Graphing
@@ -255,6 +164,7 @@ class TestOpenMG(unittest.TestCase):
             str_tosave = []
             for x in iterations_to_save:
                 str_tosave.append(str(x))
+            from os import system; system("mkdir -p output")
             csvfilelabel = 'iterative_spectra-%i_N' % N
             csvfile = open('output/%s.csv' % csvfilelabel, 'a')
             csvfile.write('frequency,' + ','.join(str_tosave) + '\n')
@@ -365,7 +275,7 @@ class TestOpenMG(unittest.TestCase):
             specax.set_xscale('log')
     
             # Problem Setup:
-            A = poissonnd((NX, NX))
+            A = geometry.poissonnd((NX, NX))
             solnforb = data.ravel().reshape((NX ** 2, 1))
             b = flexible_mmult(A, solnforb)
     
@@ -436,7 +346,7 @@ class TestOpenMG(unittest.TestCase):
             NX = 12
             NY = NX
             N = NX * NY
-            A = poisson2d((NX, NY,))
+            A = geometry.poisson2D((NX, NY,))
             b = np.random.random((N,))
             x_init = np.zeros((N,))
             threshold = 0.0001
@@ -445,7 +355,7 @@ class TestOpenMG(unittest.TestCase):
                                                         threshold,
                                                         verbose=verbose)
             if self.verbose:
-                print 'norm is', (np.linalg.norm(getresidual(b, A, x, N)))
+                print 'norm is', (np.linalg.norm(tools.getresidual(b, A, x, N)))
         except:
             showexception()
     
@@ -457,14 +367,15 @@ class TestOpenMG(unittest.TestCase):
             NX = 512
             N = NX
             u_actual = np.random.random((NX,)).reshape((N, 1))
-            A_in = poissonnd((NX,))
+            A_in = geometry.poissonnd((NX,))
             b = flexible_mmult(A_in, u_actual)
-            (u_mg, info_dict) = mg_solve(A_in, b, {
+            u_mg, info_dict = mg_solve(A_in, b, {
                                                    'problemshape': (NX,),
                                                    'gridlevels': 3,
                                                    'iterations': 1,
                                                    'verbose': False,
-                                                   'threshold': 4
+                                                   'threshold': 4,
+                                                   'give_info': True,
                                                   }
                                         )
             if self.verbose:
@@ -482,14 +393,15 @@ class TestOpenMG(unittest.TestCase):
             NY = NX
             N = NX * NY
             u_actual = np.random.random((NX, NY)).reshape((N, 1))
-            A_in = poissonnd((NX, NY))
+            A_in = geometry.poissonnd((NX, NY))
             b = flexible_mmult(A_in, u_actual)
-            (u_mg, info_dict) = mg_solve(A_in, b, {
+            u_mg, info_dict = mg_solve(A_in, b, {
                                                    'problemshape': (NX, NY),
                                                    'gridlevels': 3,
                                                    'iterations': 1,
                                                    'verbose': False,
-                                                   'threshold': 4
+                                                   'threshold': 4,
+                                                   'give_info': True,
                                                   }
                                         )
             if self.verbose:
@@ -564,7 +476,7 @@ class TestOpenMG(unittest.TestCase):
         try:
             from mpl_toolkits.mplot3d import Axes3D
             import matplotlib.pyplot as plt
-            sizemultiplier = 4
+            sizemultiplier = 2
             NX = 8 * sizemultiplier
             cycles = 3
             actualtraces = 8
@@ -572,7 +484,7 @@ class TestOpenMG(unittest.TestCase):
             NY = NX
             N = NX * NY
             (X, Y, u_actual) = mpl_test_data(delta=1 / float(sizemultiplier))
-            A_in = poissonnd((NX, NY))
+            A_in = geometry.poissonnd((NX, NY))
             b = flexible_mmult(A_in, u_actual.ravel())
             u_mg = mg_solve(A_in, b, {
                                       'problemshape': (NX, NY),
@@ -594,7 +506,7 @@ class TestOpenMG(unittest.TestCase):
                               color=((0, 0, 1.0),)
                              )
             # ax.scatter(X,Y,u_mg[0],c=((1.,0,0),),s=40)
-            ax.plot_wireframe(X, Y, u_mg[0].reshape((NX, NY)),
+            ax.plot_wireframe(X, Y, u_mg.reshape((NX, NY)),
                               rstride=NX / mgtraces,
                               cstride=NY / mgtraces,
                               color=((1.0, 0, 0),)
@@ -603,7 +515,7 @@ class TestOpenMG(unittest.TestCase):
             if self.saveFig: fig.savefig(filename)
             # plt.show()
             if self.verbose:
-                print 'norm is', (np.linalg.norm(getresidual(b, A_in, u_mg[0], N)))
+                print 'norm is', (np.linalg.norm(openmg.tools.getresidual(b, A_in, u_mg[0], N)))
         except:
             showexception()
 
