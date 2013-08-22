@@ -65,6 +65,7 @@ class TestOpenMG(unittest.TestCase):
                           'gridlevels': gridlevels,
 #                           'verbose': True,
                           'threshold': 8e-3,
+                          'saveProgress': True,
                           }
             u_mmg = mg_solve(A, b, parameters)
             if self.verbose:

@@ -203,8 +203,6 @@ def mg_solve(A_in, b, parameters):
                       how the solution was calculated
     else, just returns result.
     '''
-    # unpack the parameters into the local namespace:
-    if 'gridlevels' not in parameters: gridlevels = 2
     problemshape = parameters['problemshape']
     gridlevels = parameters['gridlevels']
     defaults['coarsest_level'] = gridlevels - 1
@@ -231,12 +229,10 @@ def mg_solve(A_in, b, parameters):
     if verbose: print '... made %i A matrices' % len(A)
     
     if verbose: print 'calling amg_cycle No.%i' % cycle
-    (result, info_dict) = amg_cycle(A, b, 0, R, parameters)
+    result, info_dict = amg_cycle(A, b, 0, R, parameters)
     
     norm = info_dict['norm']
     if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
-    if saveProgress:
-        cycles_progress_file = tools.startProgressFile(cycle, norm)
     
     if cycles > 0:  # Do v-cycles until we're past the assigned number.
         # Set cycless = [0, ] in the test definition in time_test_grid.py
@@ -254,9 +250,6 @@ def mg_solve(A_in, b, parameters):
             
             norm = info_dict['norm']
             if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
-            if saveProgress:
-                cycles_progress_file.write('%d, %.012f\n' % (cycle, norm))
-                cycles_progress_file.flush()
             
     else:  # Do v-cycles until the solution has converged
         while norm > threshold:
@@ -271,16 +264,12 @@ def mg_solve(A_in, b, parameters):
             
             norm = info_dict['norm']
             if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
-            if saveProgress:
-                cycles_progress_file.write('%d, %.012f\n' % (cycle, norm))
-                cycles_progress_file.flush()
 
     info_dict['cycle'] = cycle
     info_dict['norm'] = norm
     if verbose: print 'Returning mg_solve after %i cycle(s) with norm %f' % (cycle, norm)
-    if saveProgress: cycles_progress_file.close()
     if parameters["give_info"]:
-        return (result, info_dict)
+        return result, info_dict
     else:
         return result
 

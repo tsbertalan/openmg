@@ -25,20 +25,6 @@ def flexible_mmult(x, y):
         return x * y
 
 
-def startProgressFile(cycle, norm):
-    from time import strftime, localtime
-    isolocaltime = localtime()
-    isodate = strftime('%Y%m%d', isolocaltime)
-    isotime = strftime('T%H%M%S', isolocaltime)
-    cycles_progress_file_name = 'output/cyclesvsresid-%s%s.csv' % (isodate, isotime)
-    print "saving progress to", cycles_progress_file_name
-    cycles_progress_file = open(cycles_progress_file_name, 'a')
-    cycles_progress_file.write('cycle, residual_norm\n')
-    cycles_progress_file.write('%d, %.012f\n' % (cycle, norm))
-    cycles_progress_file.flush()
-    return cycles_progress_file
-
-
 def dictUpdateNoClobber(updateDict, targetDict):
     for key, value in updateDict.iteritems():
         dictAddNoClobber(targetDict, key, value)
