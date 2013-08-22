@@ -208,21 +208,22 @@ def mg_solve(A_in, b, parameters):
     defaults['coarsest_level'] = gridlevels - 1
     tools.dictUpdateNoClobber(defaults, parameters)
     
-    exec ', '.join(parameters) + ',  = parameters.values()'  # unpack params locally    
+    verbose = parameters['verbose']
+    dense = parameters['dense']
     
     # A list of restriction matrices for each level
     if verbose: print "Generating restriction matrices; dense=%s" % dense
     # their transposes are prolongation matrices:
     R = restrictions(b.size,
                      problemshape,
-                     coarsest_level,
+                     parameters['coarsest_level'],
                      dense=dense,
                      verbose=verbose)
 
     # a list of coefficient matrices; defined using R:
     if verbose: print "Generating coefficient matrices; dense=%s" % dense,
     A = coarsen_A(A_in,
-                  coarsest_level,
+                  parameters['coarsest_level'],
                   R,
                   dense=dense)
     cycle = 1
@@ -234,12 +235,12 @@ def mg_solve(A_in, b, parameters):
     norm = info_dict['norm']
     if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
     
-    if cycles > 0:  # Do v-cycles until we're past the assigned number.
+    if parameters['cycles'] > 0:  # Do v-cycles until we're past the assigned number.
         # Set cycless = [0, ] in the test definition in time_test_grid.py
         # to allow cycles to continue until convergence,
         # as defined with the threshold parameter.
-        while cycle < cycles:
-            if verbose: print 'cycle %i < cycles %i' % (cycle, cycles)
+        while cycle < parameters['cycles']:
+            if verbose: print 'cycle %i < cycles %i' % (cycle, parameters['cycles'])
             cycle += 1
             (result, info_dict) = amg_cycle(A,
                                             b,
@@ -252,7 +253,7 @@ def mg_solve(A_in, b, parameters):
             if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
             
     else:  # Do v-cycles until the solution has converged
-        while norm > threshold:
+        while norm > parameters['threshold']:
             cycle += 1
             if verbose: print 'calling amg_cycle No.%i' % cycle
             (result, info_dict) = amg_cycle(A,
@@ -282,13 +283,14 @@ def amg_cycle(A, b, level, R, parameters, initial='None'):
         solution
         dictionary of interesting things
     '''
-    exec ', '.join(parameters) + ',  = parameters.values()'  # unpack params locally
+    verbose = parameters['verbose']
     if initial == 'None':
         initial = np.zeros((b.size, ))
-    coarsest_level = gridlevels - 1
+    coarsest_level = parameters['gridlevels'] - 1
     N = b.size
     if level < coarsest_level:
-        u_apx = iterative_solve(A[level], b, initial, pre_iterations, verbose=verbose)
+        u_apx = iterative_solve(A[level], b, initial,
+                                parameters['pre_iterations'], verbose=verbose)
         b_coarse = flexible_mmult(R[level], b.reshape((N, 1)))
         NH = len(b_coarse)
         b_coarse.reshape((NH, ))
@@ -304,11 +306,11 @@ def amg_cycle(A, b, level, R, parameters, initial='None'):
                                       parameters,
                                      )[0]
         correction = (flexible_mmult(R[level].transpose(), coarse_correction.reshape((NH, 1)))).reshape((N, ))
-        if post_iterations > 0:
+        if parameters['post_iterations'] > 0:
             u_out = iterative_solve(A[level],
                                     b,
                                     u_apx + correction,
-                                    post_iterations,
+                                    parameters['post_iterations'],
                                     verbose=verbose)
         else:
             u_out = u_apx + correction
