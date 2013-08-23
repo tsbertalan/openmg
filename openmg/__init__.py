@@ -217,31 +217,35 @@ def mg_solve(A_in, b, parameters):
     # Using this list, generate a list of coefficient matrices; one for each level:
     A = coarsen_A(A_in, R, dense=dense, verbose=verbose)
     
+    # do at least one cycle
     result, info_dict = amg_cycle(A, b, 0, R, parameters)
-    
-    cycle = 1
     norm = info_dict['norm']
+    cycle = 1
     if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
+
+    # set up stopping conditions for v-cycling    
     assert not (parameters['cycles'] <= 0 and 'threshold' not in parameters),\
             "The parameters dictionary must contain either cycles>0 or a threshold."
-    if parameters['cycles'] > 0: 
-        # Do v-cycles until we're past the assigned number.
-        # OR set 'cycles': 0 in the parameters
-        # to allow cycles to continue until convergence, as defined with
-        # the threshold parameter.
-        while cycle < parameters['cycles']:
-            if verbose: print 'cycle %i < cycles %i' % (cycle, parameters['cycles'])
-            cycle += 1
-            (result, info_dict) = amg_cycle(A, b, 0, R, parameters, initial=result)
-            norm = info_dict['norm']
-            if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
+    def stop(cycle, norm):
+        """Returns True if either stopping condition is met."""
+        cycleStop = thresholdStop = False
+        if 'cycles' in parameters and parameters['cycles'] > 0:
+            if cycle >= parameters['cycles']:
+                cycleStop = True
+        if 'threshold' in parameters:
+            if norm < parameters['threshold']:
+                thresholdStop = True
+        return cycleStop or thresholdStop
+    
+    stopping = stop(cycle, norm)
+    while not stopping:
+        if verbose: print 'cycle %i < cycles %i' % (cycle, parameters['cycles'])
+        cycle += 1
+        (result, info_dict) = amg_cycle(A, b, 0, R, parameters, initial=result)
+        norm = info_dict['norm']
+        if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
+        stopping = stop(cycle, norm)
             
-    else:  # Do v-cycles until the solution has converged
-        while norm > parameters['threshold']:
-            cycle += 1
-            (result, info_dict) = amg_cycle(A, b, 0, R, parameters, initial=result)
-            norm = info_dict['norm']
-            if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
 
     info_dict['cycle'] = cycle
     info_dict['norm'] = norm

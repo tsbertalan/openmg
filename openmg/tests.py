@@ -519,6 +519,38 @@ class TestOpenMG(unittest.TestCase):
         except:
             showexception()
 
+    def test_threshStop(self):
+        size = 36
+        u_actual = np.sin(np.array(range(int(size))) * 3.0 / size).T
+        A = geometry.poissonnd((size,))
+        b = flexible_mmult(A, u_actual)
+        parameters = {
+                      'problemshape': (size,),
+                      'gridlevels': 2,
+                      'threshold': 8e-3,
+                      'saveProgress': True,
+                      'give_info': True, 
+                      }
+        u_mmg, info_dict = mg_solve(A, b, parameters)
+        residual_norm = np.linalg.norm(flexible_mmult(A, u_mmg) - b)
+        assert parameters['threshold'] > residual_norm
+
+    def test_cycleStop(self):
+        size = 36
+        u_actual = np.sin(np.array(range(int(size))) * 3.0 / size).T
+        A = geometry.poissonnd((size,))
+        b = flexible_mmult(A, u_actual)
+        parameters = {
+                      'problemshape': (size,),
+                      'gridlevels': 2,
+                      'cycles': 3,
+                      'threshold': 1e-10,
+                      'saveProgress': True,
+                      'give_info': True, 
+                      }
+        u_mmg, info_dict = mg_solve(A, b, parameters)
+        residual_norm = np.linalg.norm(flexible_mmult(A, u_mmg) - b)
+        assert info_dict['cycle'] == parameters['cycles']
 
 def doTests():
     suite = unittest.TestLoader().loadTestsFromTestCase(TestOpenMG)
