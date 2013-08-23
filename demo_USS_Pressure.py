@@ -217,12 +217,13 @@ for test_description in doTests:
         tests_count +=1
         test_descriptions = test_descriptions + test_description + '-'
 if tests_count > 1:
-    print "Setting more than one test to True can result in confusing "+\
+    raise ValueError(
+          "Setting more than one test to True can result in confusing "+\
           "combination-doTests. Either set only one test to True, "+\
           "or write a new combination test, with the desired parameters."
-    print "Note that such combination doTests can produce interesting results, "+\
+          "\nNote that such combination doTests can produce interesting results, "+\
           "although they require multiple linear regression to analyze."
-    sys.exit()
+          )
 if tests_count == 0:
     print "No explicit test defined. Proceeding with default values."
 
@@ -331,8 +332,7 @@ elif doTests['graph_pressure']:
     graph_pressures = [True,]
     verbose = False
 else:
-    print 'No doTests defined.'
-    sys.exit()
+    raise ValueError('No doTests defined.')
 
 if False:
     print 'Test Definition:'

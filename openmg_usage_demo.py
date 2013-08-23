@@ -1,5 +1,5 @@
 import numpy as np
-import openmg as omg
+import openmg
 from scipy import sparse
 from time import time
 from sys import argv
@@ -13,65 +13,99 @@ def main():
     for N in args:
         demo(N)
         print
+    demo(64, verbose=False, dense=True)
 
-def demo(N):
-    ## view the docstring
-    #help(omg.mg_solve)
 
+def simpleDemo(verbose=False):
+    """Solve A * u = b, where A is the 1D Poisson matrix,
+    u=sin(x), and x is in [0, 20)"""
+    N = 100
+    u_true = np.array([np.sin(x / 10.0) for x in np.linspace(0, 20, N)])
+    A = openmg.geometry.poisson(N)
+    b = openmg.tools.flexible_mmult(A, u_true)
+    params = {'problemshape': (N,), 'gridlevels': 3, 'cycles': 10,
+              'iterations': 2,       'verbose': verbose, 'dense': True,
+              'threshold': 1e-2, 'give_info': True}
+    u_mg, info_dict = openmg.mg_solve(A, b, params)
+    if verbose:
+        print "info:"
+        print info_dict
     
-    ## Set up some parameters that will be true for each example.    
-    dense = False  ## Should we use dense matrices for multigrid?
-                   ## This is not useful for small problems like N=100
-    threshold = 1e-10
+    ## if verbose==True, output will look something like this:
+    # Generating restriction matrices; dense=True
+    # Generating coefficient matrices; dense=True ... made 3 A matrices
+    # calling amg_cycle at level 0
+    #  calling amg_cycle at level 1
+    #   direct solving at level 2
+    # Residual norm from cycle 1 is 0.805398.
+    # cycle 1 < cycles 10
+    # calling amg_cycle at level 0
+    #  calling amg_cycle at level 1
+    #   direct solving at level 2
+    # Residual norm from cycle 2 is 0.107866.
+    # cycle 2 < cycles 10
+    # calling amg_cycle at level 0
+    #  calling amg_cycle at level 1
+    #   direct solving at level 2
+    # Residual norm from cycle 3 is 0.018650.
+    # cycle 3 < cycles 10
+    # calling amg_cycle at level 0
+    #  calling amg_cycle at level 1
+    #   direct solving at level 2
+    # Residual norm from cycle 4 is 0.003405.
+    # Returning mg_solve after 4 cycle(s) with norm 0.003405
+    # info:
+    # {'norm': 0.0034051536498270769, 'cycle': 4}    
+    return u_mg
+    
 
-
-    ## Set up the problem.
-    #A = np.random.rand(N, N)  ## this will make the multigrid algorithm diverge!
-                               ## (although the pure-iterative params will still work)
+def demo(N, verbose=True, dense=False):
+    ## view the docstring
+    #help(openmg.mg_solve)
+    
+    ## set up the problem
+    threshold = 1e-14
     u_true = np.array([np.sin(x / 10.0) for x in range(N)])
-    if dense:
-        A = omg.geometry.poisson1D(N)  ## a dense array for the 1D Poisson equation
-        b = np.dot(A, u_true)
-    else:
-        A = omg.geometry.poisson(N)    ## sparse 
-        b = A * u_true
-
+    A = openmg.geometry.poisson(N)  # sparse 
+    b = openmg.tools.flexible_mmult(A, u_true)
 
 
     ## Use only the coarse solver.
     params = {'verbose': False, 'threshold': threshold}
     start = time()
-    soln  = omg.coarse_solve(A, b)
+    soln  = openmg.solvers.coarse_solve(A, b)
     elapsed = time() - start
-    print N, "direct", np.linalg.norm(omg.tools.getresidual(b, A, soln, N)), elapsed
+    if verbose: print N, "direct", np.linalg.norm(openmg.tools.getresidual(b, A, soln, N)), elapsed
 
 
     ## Use an iterative solver.
     ##   This Gauss-Seidel solver will be painfully slow for N larger than, say 200.
-    ##   It's probably the main bottleneck in this process, and really should be written in C.
+    ##   It's probably the main bottleneck in this process.
     if N <= 200:
         start = time()
-        soln = omg.smooth_to_threshold(A, b, np.zeros((N, 1)),
+        soln = openmg.smooth_to_threshold(A, b, np.zeros((N, 1)),
                                                 params['threshold'],
                                                 verbose=params['verbose'])
         elapsed = time() - start
-        print N, "Gauss-Seidel", np.linalg.norm(omg.tools.getresidual(b, A, soln, N)), elapsed
+        if verbose: print N, "Gauss-Seidel", np.linalg.norm(openmg.tools.getresidual(b, A, soln, N)), elapsed
 
 
-    ## Use a 2-grid pattern.
-    params = {'problemshape': (N,), 'gridlevels': 3, 'cycles': 10,
+    ## Use a 3-grid pattern.
+    params = {'problemshape': (N,), 'gridlevels': 3, 'cycles': 0,
               'iterations': 2,       'verbose': False, 'dense': dense,
               'threshold': threshold, 'give_info': True}
     start = time()
-    mg_output  = omg.mg_solve(A, b, params)
+    mg_output  = openmg.mg_solve(A, b, params)
     soln = mg_output[0]
     cycles = mg_output[1]['cycle']
     elapsed = time() - start
     #print params
-    print N, "%i-grid"%params['gridlevels'],\
-          np.linalg.norm(omg.tools.getresidual(b, A, soln, N)), elapsed, cycles
+    if verbose: print N, "%i-grid"%params['gridlevels'],\
+          np.linalg.norm(openmg.tools.getresidual(b, A, soln, N)), elapsed, cycles
 
 
 
 if __name__=="__main__":
+    simpleDemo()
+    print
     main()

@@ -30,8 +30,7 @@ def dense_restriction(shape):
     elif alpha == 3:
         coarse_columns = np.array(range(N)).reshape(shape)[::2, ::2, ::2].ravel()
     else:
-        print "restriction(): Greater than 3 dimensions is not implemented. (shape was", shape, ".)"
-        exit()
+        raise ValueError("restriction(): Greater than 3 dimensions is not implemented. (shape was", shape, ".)")
     for c in coarse_columns:
         R[r, c] = each
         R[r, c + 1] = each
@@ -48,21 +47,23 @@ def dense_restriction(shape):
     return R
 
 
-def restriction(shape, verbose=False):
+def restriction(shape, verbose=False, dense=False):
     '''
     shape is a tuple in the shape of the problem domain.
     Requiring the shape of the domain is bad for the black-boxibility.
     Implementing a separate Ruge Steuben restriction method would avoid this.
+    Returns a CSR matrix by default, but will return dense if dense=True is given.
     '''
+    if dense:
+        return dense_restriction(shape) 
     N = tools.product(shape)
     # alpha is the dimensionality of the problem.
     alpha = len(shape)
     n = N / (2 ** alpha)
     if n == 0:
-        print 'New restriction matrix would have shape', (n,N), '.'
-        print 'coarse set would have 0 points! ' + \
-              'Try a larger problem or fewer gridlevels.'
-        exit()
+        raise ValueError('New restriction matrix would have shape ' + str((n,N))
+                         + '.' + 'Coarse set would have 0 points! ' + 
+                        'Try a larger problem or fewer gridlevels.')
     R = sparse.lil_matrix((n, N))
     r = 0  # row index in the resulting restriction matrix
     NX = shape[0]
@@ -79,8 +80,7 @@ def restriction(shape, verbose=False):
     elif alpha == 3:
         coarse_columns = np.array(range(N)).reshape(shape)[::2, ::2, ::2].ravel()
     else:
-        print "restriction(): Greater than 3 dimensions is not implemented."
-        exit()
+        raise ValueError("restriction(): Greater than 3 dimensions is not implemented.")
     rowsandcols = zip(range(n), coarse_columns)  # in cases where the geometry
     # isn't nicely divisible by 2 along one axis, this will work, but it will do
     # some very stupid reaching around to the next row 2 ** alpha

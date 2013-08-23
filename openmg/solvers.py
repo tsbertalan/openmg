@@ -64,8 +64,7 @@ def gaussSeidel(A, b, x, iterations=None, threshold=None, verbose=False):
                 x[i] = x[i] + (b[i] - Aix) / A[i, i]
         else:
             for i in range(N):
-                x[i] = x[i] + (b[i] - np.dot(A[i, :], x.reshape((N, 1)))
-                               ) / A[i, i]
+                x[i] = x[i] + (np.array(b).ravel()[i] - np.dot(A[i, :], x.reshape((N, 1)))) / A[i, i]
         
         iteration += 1
         stopping = stop(iteration, x)
