@@ -216,7 +216,7 @@ def mg_solve(A_in, b, parameters):
     A = coarsen_A(A_in, R, dense=dense, verbose=verbose)
     
     # do at least one cycle
-    result, info_dict = amg_cycle(A, b, 0, R, parameters)
+    result, info_dict = mg_cycle(A, b, 0, R, parameters)
     norm = info_dict['norm']
     cycle = 1
     if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
@@ -239,7 +239,7 @@ def mg_solve(A_in, b, parameters):
     while not stopping:
         if verbose: print 'cycle %i < cycles %i' % (cycle, parameters['cycles'])
         cycle += 1
-        (result, info_dict) = amg_cycle(A, b, 0, R, parameters, initial=result)
+        (result, info_dict) = mg_cycle(A, b, 0, R, parameters, initial=result)
         norm = info_dict['norm']
         if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
         stopping = stop(cycle, norm)
@@ -254,7 +254,7 @@ def mg_solve(A_in, b, parameters):
         return result
 
 
-def amg_cycle(A, b, level, R, parameters, initial=None):
+def mg_cycle(A, b, level, R, parameters, initial=None):
     '''
     Internally used function that shows the actual multi-level solution method,
     through a recursive call within the "level < coarsest_level" block, below.
@@ -311,12 +311,12 @@ def amg_cycle(A, b, level, R, parameters, initial=None):
         b_coarse = flexible_mmult(R[level], b.reshape((N, 1)))
         NH = len(b_coarse)
         
-        if verbose: print level * " " + "calling amg_cycle at level %i" % level
+        if verbose: print level * " " + "calling mg_cycle at level %i" % level
         residual = tools.getresidual(b, A[level], u_apx, N)
         coarse_residual = flexible_mmult(R[level], residual.reshape((N, 1))).reshape((NH,))
         
         # (3) correction for residual via recursive call
-        coarse_correction = amg_cycle(A, coarse_residual, level+1, R, parameters)[0]
+        coarse_correction = mg_cycle(A, coarse_residual, level+1, R, parameters)[0]
         correction = (flexible_mmult(R[level].transpose(), coarse_correction.reshape((NH, 1)))).reshape((N, ))
         
         if parameters['post_iterations'] > 0:
