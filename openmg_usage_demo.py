@@ -29,7 +29,7 @@ def simpleDemo(verbose=False):
     u=sin(x), and x is in [0, 20)"""
     N = 100
     u_true = np.array([np.sin(x / 10.0) for x in np.linspace(0, 20, N)])
-    A = openmg.geometry.poisson(N)
+    A = openmg.operators.poisson(N, sparse=True)
     b = openmg.tools.flexibleMmult(A, u_true)
     params = {'problemShape': (N,), 'gridLevels': 3, 'cycles': 10,
               'iterations': 2,       'verbose': verbose, 'dense': True,
@@ -74,7 +74,7 @@ def explainedDemo(N, verbose=True, dense=False):
     ## set up the problem
     threshold = 1e-14
     u_true = np.array([np.sin(x / 10.0) for x in range(N)])
-    A = openmg.geometry.poisson(N)  # sparse 
+    A = openmg.operators.poisson(N, sparse=True) 
     b = openmg.tools.flexibleMmult(A, u_true)
 
 

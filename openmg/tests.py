@@ -9,9 +9,10 @@ potential for logical testing holes.
 
 import unittest
 import numpy as np
-from __init__ import flexibleMmult, mgSolve, tools, restriction
+from __init__ import mgSolve
 from solvers import smooth, smoothToThreshold, gaussSeidel
-import geometry
+import operators
+import tools
 from sys import _getframe, exc_info
 
 
@@ -57,8 +58,8 @@ class TestOpenMG(unittest.TestCase):
         gridLevels = 4
         u_zeros = np.zeros((size,))
         u_actual = np.sin(np.array(range(int(size))) * 3.0 / size).T
-        A = geometry.poissonnd((size,))
-        b = flexibleMmult(A, u_actual)
+        A = operators.poissonnd((size,))
+        b = tools.flexibleMmult(A, u_actual)
         u_iterative = smooth(A, b, u_zeros, iterations=1)
         parameters = {'coarsestLevel': gridLevels - 1,
                       'problemShape': (problemscale, problemscale, problemscale),
@@ -68,7 +69,7 @@ class TestOpenMG(unittest.TestCase):
         u_mmg = mgSolve(A, b, parameters)
         if self.verbose:
             print 'norm is', (np.linalg.norm(tools.getresidual(b, A, u_iterative.reshape((size, 1)), size)))
-        residual_norm = np.linalg.norm(flexibleMmult(A, u_mmg) - b)
+        residual_norm = np.linalg.norm(tools.flexibleMmult(A, u_mmg) - b)
         assert parameters['threshold'] > residual_norm
     
     def test_b(self):
@@ -78,7 +79,7 @@ class TestOpenMG(unittest.TestCase):
         shape = (16, 16, 16,)
         if self.verbose:
             print 'for N = %i' % N, 'restriction matrix has shape', \
-                                     restriction(N, shape).shape
+                                     operators.restriction(N, shape).shape
     
     def test_c(self):
         '''Run the multifreq_1d test with four different N arguments'''
@@ -126,8 +127,8 @@ class TestOpenMG(unittest.TestCase):
             data = np.random.random((N,))  # 1D white noise
         gif_output_name = 'spectral_solution_rate-%i_unknowns-%s_xscale-%s_solution.gif' % (N, spectralxscale, solutionname)
 
-        A = geometry.poissonnd((N,))
-        b = flexibleMmult(A, data)
+        A = operators.poissonnd((N,))
+        b = tools.flexibleMmult(A, data)
 
     #    Prepare for Graphing
         fig = plt.figure(figsize=(7.5, 7))
@@ -164,7 +165,7 @@ class TestOpenMG(unittest.TestCase):
                                              iterations,
                                              verbose=verbose)
                                             )
-            spectra.append(fftpack.fft(b - flexibleMmult(A,
+            spectra.append(fftpack.fft(b - tools.flexibleMmult(A,
                                                           solutions[iterations]
                                                          )
                                       )
@@ -259,16 +260,16 @@ class TestOpenMG(unittest.TestCase):
         specax.set_xscale('log')
 
         # Problem Setup:
-        A = geometry.poissonnd((NX, NX))
+        A = operators.poissonnd((NX, NX))
         solnforb = data.ravel().reshape((NX ** 2, 1))
-        b = flexibleMmult(A, solnforb)
+        b = tools.flexibleMmult(A, solnforb)
 
         # Initial "Solution" placeholder:
         solutions = range(finaliterations)
         spectra = range(finaliterations)
         iterations = 0
         solutions[iterations] = np.zeros((NX, NX)).ravel()
-        spectra[iterations] = b - flexibleMmult(A, solutions[iterations])
+        spectra[iterations] = b - tools.flexibleMmult(A, solutions[iterations])
 
         # Initial graphs:
         filebasename = 'output/N_%i-iterations_%i' % (NX ** 2, iterations)
@@ -327,7 +328,7 @@ class TestOpenMG(unittest.TestCase):
         NX = 12
         NY = NX
         N = NX * NY
-        A = geometry.poisson2D((NX, NY,))
+        A = operators.poisson2D((NX, NY,))
         b = np.random.random((N,))
         x_init = np.zeros((N,))
         threshold = 0.0001
@@ -341,7 +342,7 @@ class TestOpenMG(unittest.TestCase):
     def test_gs_nothresh(self):
         '''Test the Gauss-Siedel with no threshold or iterations specified.'''
         NX = N = 12
-        A = geometry.poissonnd((NX,))
+        A = operators.poissonnd((NX,))
         b = np.random.random((N,))
         x_init = np.zeros((N,))
         x = gaussSeidel(A, b, x_init,)
@@ -353,8 +354,8 @@ class TestOpenMG(unittest.TestCase):
         NX = 512
         N = NX
         u_actual = np.random.random((NX,)).reshape((N, 1))
-        A_in = geometry.poissonnd((NX,))
-        b = flexibleMmult(A_in, u_actual)
+        A_in = operators.poissonnd((NX,))
+        b = tools.flexibleMmult(A_in, u_actual)
         u_mg, info_dict = mgSolve(A_in, b, {
                                                'problemShape': (NX,),
                                                'gridLevels': 3,
@@ -375,8 +376,8 @@ class TestOpenMG(unittest.TestCase):
         N = NX * NY * NZ
         shape = NX, NY, NZ
         u_actual = np.random.random(shape).reshape((N, 1))
-        A_in = geometry.poissonnd(shape)
-        b = flexibleMmult(A_in, u_actual)
+        A_in = operators.poissonnd(shape)
+        b = tools.flexibleMmult(A_in, u_actual)
         u_mg, info_dict = mgSolve(A_in, b, {
                                                'problemShape': shape,
                                                'gridLevels': 3,
@@ -398,8 +399,8 @@ class TestOpenMG(unittest.TestCase):
         NY = NX
         N = NX * NY
         u_actual = np.random.random((NX, NY)).reshape((N, 1))
-        A_in = geometry.poissonnd((NX, NY))
-        b = flexibleMmult(A_in, u_actual)
+        A_in = operators.poissonnd((NX, NY))
+        b = tools.flexibleMmult(A_in, u_actual)
         u_mg, info_dict = mgSolve(A_in, b, {
                                                'problemShape': (NX, NY),
                                                'gridLevels': 3,
@@ -430,7 +431,7 @@ class TestOpenMG(unittest.TestCase):
 #             print 'NX is', NX, 'and N is ', N, ':'
 #             u_actual = np.random.random((NX, NY, NZ)).reshape((N, 1))
 #             A_in = poissonnd((NX, NY, NZ))
-#             b = flexibleMmult(A_in, u_actual)
+#             b = tools.flexibleMmult(A_in, u_actual)
 #             (u_mg, info_dict) = mgSolve(A_in, b,
 #                                 {'problemShape': (NX, NY, NZ),
 #                                  'gridLevels': 3,
@@ -456,8 +457,8 @@ class TestOpenMG(unittest.TestCase):
         NY = NX
         N = NX * NY
         (X, Y, u_actual) = mpl_test_data(delta=1 / float(sizemultiplier))
-        A_in = geometry.poissonnd((NX, NY))
-        b = flexibleMmult(A_in, u_actual.ravel())
+        A_in = operators.poissonnd((NX, NY))
+        b = tools.flexibleMmult(A_in, u_actual.ravel())
         u_mg = mgSolve(A_in, b, {
                                   'problemShape': (NX, NY),
                                   'gridLevels': 2,
@@ -492,8 +493,8 @@ class TestOpenMG(unittest.TestCase):
     def test_threshStop(self):
         size = 36
         u_actual = np.sin(np.array(range(int(size))) * 3.0 / size).T
-        A = geometry.poissonnd((size,))
-        b = flexibleMmult(A, u_actual)
+        A = operators.poissonnd((size,))
+        b = tools.flexibleMmult(A, u_actual)
         parameters = {
                       'problemShape': (size,),
                       'gridLevels': 2,
@@ -501,14 +502,14 @@ class TestOpenMG(unittest.TestCase):
                       'giveInfo': True, 
                       }
         u_mmg, info_dict = mgSolve(A, b, parameters)
-        residual_norm = np.linalg.norm(flexibleMmult(A, u_mmg) - b)
+        residual_norm = np.linalg.norm(tools.flexibleMmult(A, u_mmg) - b)
         assert parameters['threshold'] > residual_norm
 
     def test_cycleStop(self):
         size = 36
         u_actual = np.sin(np.array(range(int(size))) * 3.0 / size).T
-        A = geometry.poissonnd((size,))
-        b = flexibleMmult(A, u_actual)
+        A = operators.poissonnd((size,))
+        b = tools.flexibleMmult(A, u_actual)
         parameters = {
                       'problemShape': (size,),
                       'gridLevels': 2,
@@ -517,24 +518,24 @@ class TestOpenMG(unittest.TestCase):
                       'giveInfo': True, 
                       }
         u_mmg, info_dict = mgSolve(A, b, parameters)
-        residual_norm = np.linalg.norm(flexibleMmult(A, u_mmg) - b)
+        residual_norm = np.linalg.norm(tools.flexibleMmult(A, u_mmg) - b)
         assert info_dict['cycle'] == parameters['cycles']
 
     def test_poisson4d(self):
         def testor():
-            geometry.poissonnd((1, 2, 3, 4))
+            operators.poissonnd((1, 2, 3, 4))
         np.testing.assert_raises(ValueError, testor)
         
     def test_123DRestriction(self):
         for dense in True, False:
-            R = [restriction(tuple(
+            R = [operators.restriction(tuple(
                    [4 for i in range(alpha)]
                                    ), dense=dense) for alpha in range(1, 4)]
     
     def test_4DRestriction(self):
         for dense in True, False:
             def testor():
-                R = restriction((4, 4, 4, 4), dense=dense)
+                R = operators.restriction((4, 4, 4, 4), dense=dense)
             np.testing.assert_raises(ValueError, testor)
 
 def doTests():
