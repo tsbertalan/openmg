@@ -22,14 +22,14 @@ def simpleDemo(verbose=False):
     N = 100
     u_true = np.array([np.sin(x / 10.0) for x in np.linspace(0, 20, N)])
     A = openmg.geometry.poisson(N)
-    b = openmg.tools.flexible_mmult(A, u_true)
-    params = {'problemshape': (N,), 'gridlevels': 3, 'cycles': 10,
+    b = openmg.tools.flexibleMmult(A, u_true)
+    params = {'problemShape': (N,), 'gridLevels': 3, 'cycles': 10,
               'iterations': 2,       'verbose': verbose, 'dense': True,
-              'threshold': 1e-2, 'give_info': True}
-    u_mg, info_dict = openmg.mg_solve(A, b, params)
+              'threshold': 1e-2, 'giveInfo': True}
+    u_mg, infoDict = openmg.mgSolve(A, b, params)
     if verbose:
         print "info:"
-        print info_dict
+        print infoDict
     
     ## if verbose==True, output will look something like this:
     # Generating restriction matrices; dense=True
@@ -53,7 +53,7 @@ def simpleDemo(verbose=False):
     #  calling amg_cycle at level 1
     #   direct solving at level 2
     # Residual norm from cycle 4 is 0.003405.
-    # Returning mg_solve after 4 cycle(s) with norm 0.003405
+    # Returning mgSolve after 4 cycle(s) with norm 0.003405
     # info:
     # {'norm': 0.0034051536498270769, 'cycle': 4}    
     return u_mg
@@ -61,19 +61,19 @@ def simpleDemo(verbose=False):
 
 def demo(N, verbose=True, dense=False):
     ## view the docstring
-    #help(openmg.mg_solve)
+    #help(openmg.mgSolve)
     
     ## set up the problem
     threshold = 1e-14
     u_true = np.array([np.sin(x / 10.0) for x in range(N)])
     A = openmg.geometry.poisson(N)  # sparse 
-    b = openmg.tools.flexible_mmult(A, u_true)
+    b = openmg.tools.flexibleMmult(A, u_true)
 
 
     ## Use only the coarse solver.
     params = {'verbose': False, 'threshold': threshold}
     start = time()
-    soln  = openmg.solvers.coarse_solve(A, b)
+    soln  = openmg.solvers.coarseSolve(A, b)
     elapsed = time() - start
     if verbose: print N, "direct", np.linalg.norm(openmg.tools.getresidual(b, A, soln, N)), elapsed
 
@@ -83,7 +83,7 @@ def demo(N, verbose=True, dense=False):
     ##   It's probably the main bottleneck in this process.
     if N <= 200:
         start = time()
-        soln = openmg.smooth_to_threshold(A, b, np.zeros((N, 1)),
+        soln = openmg.smoothToThreshold(A, b, np.zeros((N, 1)),
                                                 params['threshold'],
                                                 verbose=params['verbose'])
         elapsed = time() - start
@@ -91,16 +91,16 @@ def demo(N, verbose=True, dense=False):
 
 
     ## Use a 3-grid pattern.
-    params = {'problemshape': (N,), 'gridlevels': 3, 'cycles': 0,
+    params = {'problemShape': (N,), 'gridLevels': 3, 'cycles': 0,
               'iterations': 2,       'verbose': False, 'dense': dense,
-              'threshold': threshold, 'give_info': True}
+              'threshold': threshold, 'giveInfo': True}
     start = time()
-    mg_output  = openmg.mg_solve(A, b, params)
+    mg_output  = openmg.mgSolve(A, b, params)
     soln = mg_output[0]
     cycles = mg_output[1]['cycle']
     elapsed = time() - start
     #print params
-    if verbose: print N, "%i-grid"%params['gridlevels'],\
+    if verbose: print N, "%i-grid"%params['gridLevels'],\
           np.linalg.norm(openmg.tools.getresidual(b, A, soln, N)), elapsed, cycles
 
 

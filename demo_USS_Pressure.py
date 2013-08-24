@@ -10,7 +10,7 @@ import logging
 # from scipy import *
 import scipy.sparse as sparse
 import numpy as np
-from openmg import mg_solve, smooth_to_threshold
+from openmg import mgSolve, smoothToThreshold
 
 def whoami():
     '''
@@ -132,16 +132,16 @@ def testgrid(parameters):
         elif solver == 'mmg':                                           ##Our Multi-Grid
             #parameters['verbose']=False #uncomment to disable verbosity within the OpenMG code.
             if graph_pressure: parameters['cycles']=1
-            (u,info_dict) = mg_solve(LHS,q+Qa,parameters) # info_dict here contains both cycle and norm
+            (u,info_dict) = mgSolve(LHS,q+Qa,parameters) # info_dict here contains both cycle and norm
 
             if graph_pressure: parameters['cycles']=2
-            if graph_pressure: (utwo,info_dict) = mg_solve(LHS,q+Qa,parameters) # info_dict here contains both cycle and norm
+            if graph_pressure: (utwo,info_dict) = mgSolve(LHS,q+Qa,parameters) # info_dict here contains both cycle and norm
             if graph_pressure: parameters['cycles']=3
-            if graph_pressure: (uthree,info_dict) = mg_solve(LHS,q+Qa,parameters) # info_dict here contains both cycle and norm
+            if graph_pressure: (uthree,info_dict) = mgSolve(LHS,q+Qa,parameters) # info_dict here contains both cycle and norm
 
             info_dict['solverstring'] = '%igrid-%iiter-%icells%sthreshold-%icycles' % (gridlevels,iterations,N,threshold,cycles)
         elif solver == 'gs':                                            ##Our Gauss-Seidel iterative solver
-            (u,gs_iterations) =   smooth_to_threshold(LHS, q+Qa, np.zeros((q.size,)), threshold,verbose=verbose)
+            (u,gs_iterations) =   smoothToThreshold(LHS, q+Qa, np.zeros((q.size,)), threshold,verbose=verbose)
             info_dict['solverstring']='GaussSeidel-%iiter-%icells' % (gs_iterations,N)
             info_dict['cycle']=0
             info_dict['norm']=np.linalg.norm(q+Qa-np.dot(LHS,u))

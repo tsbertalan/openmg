@@ -7,9 +7,9 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
 
-from tools import flexible_mmult, getresidual
+from tools import getresidual
 
-def coarse_solve(A, b):
+def coarseSolve(A, b):
     '''Uses scipy.sparse.numpy.linalg.solve or np.linalg.solve, depending on
     the sparsity of A.
     '''
@@ -24,7 +24,7 @@ def coarse_solve(A, b):
 def smooth(A, b, x, iterations, verbose=False):
     return gaussSeidel(A, b, x, iterations=iterations, verbose=verbose)
 
-def smooth_to_threshold(A, b, x, threshold, verbose=False):
+def smoothToThreshold(A, b, x, threshold, verbose=False):
     return gaussSeidel(A, b, x, threshold=threshold, verbose=verbose)
 
 def gaussSeidel(A, b, x, iterations=None, threshold=None, verbose=False):

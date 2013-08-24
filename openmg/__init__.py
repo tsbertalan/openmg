@@ -2,25 +2,24 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
 
-from solvers import smooth, smooth_to_threshold, coarse_solve
+from solvers import smooth, smoothToThreshold, coarseSolve
 import tools
 import geometry
-flexible_mmult = tools.flexible_mmult
+flexibleMmult = tools.flexibleMmult
 
 
 defaults = {
-    'problemshape': (200,),
-    'gridlevels': 2,
+    'problemShape': (200,),
+    'gridLevels': 2,
     'verbose': False,         
     'threshold': 0.1,
     'cycles': 0,
-    'saveProgress': False,
-    'pre_iterations': 1,
-    'post_iterations': 0,
+    'preIterations': 1,
+    'postIterations': 0,
     'dense': False,
-    'give_info': False,
+    'giveInfo': False,
 }
-def mg_solve(A_in, b, parameters):
+def mgSolve(A_in, b, parameters):
     """
     The main externally-usable function.
     
@@ -34,15 +33,15 @@ def mg_solve(A_in, b, parameters):
             Should include these fields:
             
             Required:
-                problemshape : tuple of ints
+                problemShape : tuple of ints
                     The shape of the spatial domain.
-                gridlevels : int
+                gridLevels : int
                     How many levels to generate in the restriction hierarchy.
                 
             Optional:
-                coarsest_level=gridlevels - 1 : int
+                coarsestLevel=gridLevels - 1 : int
                     An int larger than 0 denoting the level at which
-                    to use coarse_solve().
+                    to use coarseSolve().
                 verbose=False : bool
                     Whether to print progress information.
                 threshold=.1 : float_like
@@ -52,12 +51,12 @@ def mg_solve(A_in, b, parameters):
                     How many v-cycles to perform. 0 is interpreted as meaning
                     that v-cycles should be continued until the
                     residual norm falls below threshold.
-                pre_iterations=1 : int
+                preIterations=1 : int
                     How many iterations to use in the pre-smoother.
-                post_iterations=0 : int
+                postIterations=0 : int
                     How many iterations to use in the post-smoother.
-                give_info=False : bool
-                    Whether to return the info_dict
+                giveInfo=False : bool
+                    Whether to return the infoDict
               
             A sample parameters dictionary is available at openmg.defaults .
     
@@ -65,13 +64,13 @@ def mg_solve(A_in, b, parameters):
     -------
         result : ndarray
             The solution vector; same size as b.
-        info_dict : dictionary
-            Only returned if give_info=True was supplied in the parameters dictionary.
+        infoDict : dictionary
+            Only returned if giveInfo=True was supplied in the parameters dictionary.
             A dictionary of interesting information about how the solution was calculated.
     """
-    problemshape = parameters['problemshape']
-    gridlevels = parameters['gridlevels']
-    defaults['coarsest_level'] = gridlevels - 1
+    problemShape = parameters['problemShape']
+    gridLevels = parameters['gridLevels']
+    defaults['coarsestLevel'] = gridLevels - 1
     tools.dictUpdateNoClobber(defaults, parameters)
     
     verbose = parameters['verbose']
@@ -79,14 +78,14 @@ def mg_solve(A_in, b, parameters):
     
     # Generate a list of restriction matrices; one for each level-transition.
     # Their transposes are prolongation matrices.
-    R = restrictions(problemshape, parameters['coarsest_level'], dense=dense, verbose=verbose)
+    R = restrictionList(problemShape, parameters['coarsestLevel'], dense=dense, verbose=verbose)
 
     # Using this list, generate a list of coefficient matrices; one for each level:
-    A = coarsen_A(A_in, R, dense=dense, verbose=verbose)
+    A = coeffecientList(A_in, R, dense=dense, verbose=verbose)
     
     # do at least one cycle
-    result, info_dict = mg_cycle(A, b, 0, R, parameters)
-    norm = info_dict['norm']
+    result, infoDict = mgCycle(A, b, 0, R, parameters)
+    norm = infoDict['norm']
     cycle = 1
     if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
 
@@ -108,31 +107,31 @@ def mg_solve(A_in, b, parameters):
     while not stopping:
         if verbose: print 'cycle %i < cycles %i' % (cycle, parameters['cycles'])
         cycle += 1
-        (result, info_dict) = mg_cycle(A, b, 0, R, parameters, initial=result)
-        norm = info_dict['norm']
+        (result, infoDict) = mgCycle(A, b, 0, R, parameters, initial=result)
+        norm = infoDict['norm']
         if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
         stopping = stop(cycle, norm)
             
 
-    info_dict['cycle'] = cycle
-    info_dict['norm'] = norm
-    if verbose: print 'Returning mg_solve after %i cycle(s) with norm %f' % (cycle, norm)
-    if parameters["give_info"]:
-        return result, info_dict
+    infoDict['cycle'] = cycle
+    infoDict['norm'] = norm
+    if verbose: print 'Returning mgSolve after %i cycle(s) with norm %f' % (cycle, norm)
+    if parameters["giveInfo"]:
+        return result, infoDict
     else:
         return result
 
 
-def mg_cycle(A, b, level, R, parameters, initial=None):
+def mgCycle(A, b, level, R, parameters, initial=None):
     """
     Internally used function that shows the actual multi-level solution method,
-    through a recursive call within the "level < coarsest_level" block, below.
+    through a recursive call within the "level < coarsestLevel" block, below.
     
     Parameters
     ----------
     A : list of ndarrays
         A list of square arrays; one for each level of resolution. As returned
-        by coarsen_A().
+        by coeffecientList().
     b : ndarray
         top-level RHS vector
     level : int
@@ -140,9 +139,9 @@ def mg_cycle(A, b, level, R, parameters, initial=None):
         recursive multigrid.
     R : list of ndarrays
         A list of (generally nonsquare) arrays; one for each transition between
-        levels of resolution. As returned by restrictions().
+        levels of resolution. As returned by restrictionList().
     parameters : dict 
-        A dictionary of parameters. See documentation for mg_solve() for details.
+        A dictionary of parameters. See documentation for mgSolve() for details.
         
     Optional Parameters
     -------------------
@@ -153,10 +152,10 @@ def mg_cycle(A, b, level, R, parameters, initial=None):
     Returns
     -------
     
-    u_out : ndarray
+    uOut : ndarray
         solution
     
-    info_dict
+    infoDict
         Dictionary of information about the solution process. Fields:
         norm
             The final norm of the residual
@@ -171,44 +170,44 @@ def mg_cycle(A, b, level, R, parameters, initial=None):
     # (2) finding the coarse residual, (3) solving for the coarse correction
     # to account for that residual via recursive call, (4) adding that
     # correction to the pre-smoothed solution, (5) then possibly post-smoothing. 
-    if level < parameters['coarsest_level']:
+    if level < parameters['coarsestLevel']:
         # (1) pre-smoothing
-        u_apx = smooth(A[level], b, initial,
-                                parameters['pre_iterations'], verbose=verbose)
+        uApx = smooth(A[level], b, initial,
+                                parameters['preIterations'], verbose=verbose)
         
         # (2) coarse residual
-        b_coarse = flexible_mmult(R[level], b.reshape((N, 1)))
-        NH = len(b_coarse)
+        bCoarse = flexibleMmult(R[level], b.reshape((N, 1)))
+        NH = len(bCoarse)
         
-        if verbose: print level * " " + "calling mg_cycle at level %i" % level
-        residual = tools.getresidual(b, A[level], u_apx, N)
-        coarse_residual = flexible_mmult(R[level], residual.reshape((N, 1))).reshape((NH,))
+        if verbose: print level * " " + "calling mgCycle at level %i" % level
+        residual = tools.getresidual(b, A[level], uApx, N)
+        coarseResidual = flexibleMmult(R[level], residual.reshape((N, 1))).reshape((NH,))
         
         # (3) correction for residual via recursive call
-        coarse_correction = mg_cycle(A, coarse_residual, level+1, R, parameters)[0]
-        correction = (flexible_mmult(R[level].transpose(), coarse_correction.reshape((NH, 1)))).reshape((N, ))
+        coarse_correction = mgCycle(A, coarseResidual, level+1, R, parameters)[0]
+        correction = (flexibleMmult(R[level].transpose(), coarse_correction.reshape((NH, 1)))).reshape((N, ))
         
-        if parameters['post_iterations'] > 0:
+        if parameters['postIterations'] > 0:
             # (5) post-smoothing
-            u_out = smooth(A[level],
+            uOut = smooth(A[level],
                                     b,
-                                    u_apx + correction, # (4)
-                                    parameters['post_iterations'],
+                                    uApx + correction, # (4)
+                                    parameters['postIterations'],
                                     verbose=verbose)
         else:
-            u_out = u_apx + correction # (4)
+            uOut = uApx + correction # (4)
             
         # Save norm, to monitor for convergence at topmost level.
-        norm = sparse.base.np.linalg.norm(tools.getresidual(b, A[level], u_out, N))
+        norm = sparse.base.np.linalg.norm(tools.getresidual(b, A[level], uOut, N))
     
     # The recursive calls only end when we're at the coarsest level, where
     # we simply apply the chosen coarse solver.
     else:
         norm = 0
         if verbose: print level * " " + "direct solving at level %i" % level
-        u_out = coarse_solve(A[level], b.reshape((N, 1)))
+        uOut = coarseSolve(A[level], b.reshape((N, 1)))
         
-    return u_out, {'norm': norm}
+    return uOut, {'norm': norm}
 
 
 def restriction(shape, dense=False):
@@ -252,7 +251,7 @@ def restriction(shape, dense=False):
     if n == 0:
         raise ValueError('New restriction matrix would have shape ' + str((n,N))
                          + '.' + 'Coarse set would have 0 points! ' + 
-                        'Try a larger problem or fewer gridlevels.')
+                        'Try a larger problem or fewer gridLevels.')
     if dense:
         R = np.zeros((n, N))
     else:
@@ -260,17 +259,17 @@ def restriction(shape, dense=False):
     
     # columns in the restriction matrix:
     if alpha == 1:
-        coarse_columns = np.array(range(N)).reshape(shape)[::2].ravel()
+        coarseColumns = np.array(range(N)).reshape(shape)[::2].ravel()
     elif alpha == 2:
-        coarse_columns = np.array(range(N)).reshape(shape)[::2, ::2].ravel()
+        coarseColumns = np.array(range(N)).reshape(shape)[::2, ::2].ravel()
     elif alpha == 3:
-        coarse_columns = np.array(range(N)).reshape(shape)[::2, ::2, ::2].ravel()
+        coarseColumns = np.array(range(N)).reshape(shape)[::2, ::2, ::2].ravel()
     else:
         raise ValueError("restriction(): Greater than 3 dimensions is not"
                          "implemented. (shape was" + str(shape) +" .)")
     
     each = 1.0 / (2 ** alpha)
-    for r, c in zip(range(n), coarse_columns):
+    for r, c in zip(range(n), coarseColumns):
         R[r, c] = each
         R[r, c + 1] = each
         if alpha >= 2:
@@ -288,19 +287,19 @@ def restriction(shape, dense=False):
         return R.tocsr()
 
 
-def restrictions(problemshape, coarsest_level, dense=False, verbose=False):
+def restrictionList(problemShape, coarsestLevel, dense=False, verbose=False):
     """
     Returns a list of restriction matrices (non-square) for each level.
     It should, therefore, be a list with as many elements
-    as the output of coarsen_A().
+    as the output of coeffecientList().
     
     Parameters
     ----------
-    problemshape : tuple of ints
+    problemShape : tuple of ints
         The problem geometry. Only rectangular geometries of less than 3
         spatial dimensions are dealt with here. The product of the values in
         this tuple should be the total number of unknowns, N.
-    coarsest_level : int
+    coarsestLevel : int
         With a numbering like [1, 2, ..., coarsest level], this defines
         how deep the coarsening hierarchy should go.
     
@@ -318,14 +317,14 @@ def restrictions(problemshape, coarsest_level, dense=False, verbose=False):
         transition between levels of resolution.
     """
     if verbose: print "Generating restriction matrices; dense=%s" % dense
-    levels = coarsest_level + 1
+    levels = coarsestLevel + 1
     R = list(range(levels - 1))  # We don't need R at the coarsest level.
     for level in range(levels - 1):
-        R[level] = restriction(tuple(np.array(problemshape) / (2 ** level)), dense=dense)
+        R[level] = restriction(tuple(np.array(problemShape) / (2 ** level)), dense=dense)
     return R
 
 
-def coarsen_A(A_in, R, dense=False, verbose=False):
+def coeffecientList(A_in, R, dense=False, verbose=False):
     """Returns a list of coeffecient matrices.
     
     Parameters
@@ -334,7 +333,7 @@ def coarsen_A(A_in, R, dense=False, verbose=False):
         The (square) coeffecient matrix for the original problem.
     R : list of ndarrays    
         A list of (generally nonsquare) restriction matrices, as produced by
-        restrictions(N, problemshape, coarsest_level)
+        restrictionList(N, problemShape, coarsestLevel)
         
     Optional Parameters
     -------------------
@@ -350,8 +349,8 @@ def coarsen_A(A_in, R, dense=False, verbose=False):
         level of resolution.
     """
     if verbose: print "Generating coefficient matrices; dense=%s ..." % dense,
-    coarsest_level = len(R)
-    levels = coarsest_level + 1
+    coarsestLevel = len(R)
+    levels = coarsestLevel + 1
     A = list(range(levels))
     if dense:
         if sparse.issparse(A_in):
@@ -365,8 +364,8 @@ def coarsen_A(A_in, R, dense=False, verbose=False):
         # A_H = R * A_h * R^T
         # or
         # A_H = R * A_h * P :
-        A[level] = flexible_mmult(
-                                  flexible_mmult(R[level-1], A[level-1]),
+        A[level] = flexibleMmult(
+                                  flexibleMmult(R[level-1], A[level-1]),
                                                              R[level-1].T)
     if verbose: print 'made %i A matrices' % len(A)
     return A
