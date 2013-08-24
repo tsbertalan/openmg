@@ -8,137 +8,6 @@ import geometry
 flexible_mmult = tools.flexible_mmult
 
 
-def dense_restriction(shape):
-    '''
-    It would be nice to make this rely only on N, not shape. But, really, the
-    restriction operator is problem-dependent. There are certainly problem
-    domains where "dimensionality" means something other than spatial dimensions. 
-    '''
-    N = tools.product(shape)
-    alpha = len(shape)
-    R = np.zeros((N / (2 ** alpha), N))
-    r = 0  # row index in the resulting restriction matrix
-    NX = shape[0]
-    if alpha >= 2:
-        NY = shape[1]
-    each = 1.0 / (2 ** alpha)
-    # columns in the restriction matrix:
-    if alpha == 1:
-        coarse_columns = np.array(range(N)).reshape(shape)[::2].ravel()
-    elif alpha == 2:
-        coarse_columns = np.array(range(N)).reshape(shape)[::2, ::2].ravel()
-    elif alpha == 3:
-        coarse_columns = np.array(range(N)).reshape(shape)[::2, ::2, ::2].ravel()
-    else:
-        raise ValueError("restriction(): Greater than 3 dimensions is not implemented. (shape was", shape, ".)")
-    for c in coarse_columns:
-        R[r, c] = each
-        R[r, c + 1] = each
-        if alpha >= 2:
-            R[r, c + NX] = each
-            R[r, c + NX + 1] = each
-            if alpha == 3:
-                R[r, c + NX * NY] = each
-                R[r, c + NX * NY + 1] = each
-                R[r, c + NX * NY + NX] = each
-                R[r, c + NX * NY + NX + 1] = each
-        r += 1
-    #return scipy.sparse.csc_matrix(R)
-    return R
-
-
-def restriction(shape, verbose=False, dense=False):
-    '''
-    shape is a tuple in the shape of the problem domain.
-    Requiring the shape of the domain is bad for the black-boxibility.
-    Implementing a separate Ruge Steuben restriction method would avoid this.
-    Returns a CSR matrix by default, but will return dense if dense=True is given.
-    '''
-    if dense:
-        return dense_restriction(shape) 
-    N = tools.product(shape)
-    # alpha is the dimensionality of the problem.
-    alpha = len(shape)
-    n = N / (2 ** alpha)
-    if n == 0:
-        raise ValueError('New restriction matrix would have shape ' + str((n,N))
-                         + '.' + 'Coarse set would have 0 points! ' + 
-                        'Try a larger problem or fewer gridlevels.')
-    R = sparse.lil_matrix((n, N))
-    r = 0  # row index in the resulting restriction matrix
-    NX = shape[0]
-    if alpha >= 2:
-        NY = shape[1]
-    #NZ = shape[3] # don't need this
-    each = 1.0 / (2 ** alpha)
-    
-    # columns in the restriction matrix:
-    if alpha == 1:
-        coarse_columns = np.array(range(N)).reshape(shape)[::2].ravel()
-    elif alpha == 2:
-        coarse_columns = np.array(range(N)).reshape(shape)[::2, ::2].ravel()
-    elif alpha == 3:
-        coarse_columns = np.array(range(N)).reshape(shape)[::2, ::2, ::2].ravel()
-    else:
-        raise ValueError("restriction(): Greater than 3 dimensions is not implemented.")
-    rowsandcols = zip(range(n), coarse_columns)  # in cases where the geometry
-    # isn't nicely divisible by 2 along one axis, this will work, but it will do
-    # some very stupid reaching around to the next row 2 ** alpha
-    for (r, c) in rowsandcols:
-        R[r, c] = each
-        R[r, c + 1] = each
-        if alpha >= 2:
-            R[r, c + NX] = each
-            R[r, c + NX + 1] = each
-            if alpha == 3:
-                R[r, c + NX * NY] = each
-                R[r, c + NX * NY + 1] = each
-                R[r, c + NX * NY + NX] = each
-                R[r, c + NX * NY + NX + 1] = each
-    #return scipy.sparse.csc_matrix(R)
-    return R.tocsr()
-
-
-def restrictions(problemshape, coarsest_level, dense=False, verbose=False):
-    '''
-    Returns a list of restriction matrices (non-square) for each level.
-    It should, therefore, be a list with as many elements
-    as the output of coarsen_A().
-    
-    Parameters
-    ----------
-    problemshape : tuple of ints
-        The problem geometry. Only rectangular geometries of less than 3
-        spatial dimensions are dealt with here. The product of the values in
-        this tuple should be the total number of unknowns, N.
-    coarsest_level : int
-        With a numbering like [1, 2, ..., coarsest level], this defines
-        how deep the coarsening hierarchy should go.
-    
-    Optional Parameters
-    -------------------
-    dense=False : bool
-        Whether to not use CSR storage for the returned restriction operators.
-    verbose=False: bool
-        Whether to print progress information.
-        
-    Returns
-    -------
-    R : list of ndarrays
-        A list of (generally nonsquare) restriction operators, one for each
-        transition between levels of resolution.
-    '''
-    if verbose: print "Generating restriction matrices; dense=%s" % dense
-    levels = coarsest_level + 1
-    R = list(range(levels - 1))  # We don't need R at the coarsest level.
-    for level in range(levels - 1):
-        if dense:
-            R[level] = dense_restriction(tuple(np.array(problemshape) / (2 ** level)))
-        else:
-            R[level] = restriction(tuple(np.array(problemshape) / (2 ** level)))
-    return R
-
-
 defaults = {
     'problemshape': (200,),
     'gridlevels': 2,
@@ -152,7 +21,7 @@ defaults = {
     'give_info': False,
 }
 def mg_solve(A_in, b, parameters):
-    '''
+    """
     The main externally-usable function.
     
     Parameters
@@ -199,7 +68,7 @@ def mg_solve(A_in, b, parameters):
         info_dict : dictionary
             Only returned if give_info=True was supplied in the parameters dictionary.
             A dictionary of interesting information about how the solution was calculated.
-    '''
+    """
     problemshape = parameters['problemshape']
     gridlevels = parameters['gridlevels']
     defaults['coarsest_level'] = gridlevels - 1
@@ -255,7 +124,7 @@ def mg_solve(A_in, b, parameters):
 
 
 def mg_cycle(A, b, level, R, parameters, initial=None):
-    '''
+    """
     Internally used function that shows the actual multi-level solution method,
     through a recursive call within the "level < coarsest_level" block, below.
     
@@ -292,7 +161,7 @@ def mg_cycle(A, b, level, R, parameters, initial=None):
         norm
             The final norm of the residual
     
-    '''
+    """
     verbose = parameters['verbose']
     if initial is None:
         initial = np.zeros((b.size, ))
@@ -342,8 +211,122 @@ def mg_cycle(A, b, level, R, parameters, initial=None):
     return u_out, {'norm': norm}
 
 
+def restriction(shape, dense=False):
+    """
+    Create a nonsquare restriction matrix by taking every second point along
+    each axis in a 1D, 2D, or 3D domain.
+    
+    Parameters
+    ----------
+    shape : tuple of ints
+        The (rectangular) geometry of the problem.
+        
+    Optional Parameters
+    -------------------
+    dense=False : bool
+        Whether to use and return a sparse (CSR) restriction matrix.
+        
+    Returns
+    -------
+    R : ndarray
+        Array of shape (N/(2**alpha), N), where the int N is the number of
+        unknowns (product of shape ints), and alpha=len(shape).
+    
+    Requiring the shape of the domain is bad for the black-boxibility.
+    Implementing a separate Ruge Steuben restriction method would avoid this.
+    Returns a CSR matrix by default, but will return dense if dense=True is given.
+
+    It would be nice to make this rely only on N, not shape. But, really, the
+    restriction operator is problem-dependent. There are certainly problem
+    domains where "dimensionality" means something other than spatial dimensions. 
+    """
+    # alpha is the dimensionality of the problem.
+    alpha = len(shape)
+    NX = shape[0]
+    if alpha >= 2:
+        NY = shape[1]
+        #NZ = shape[3] # don't need this
+    N = tools.product(shape)
+
+    n = N / (2 ** alpha)
+    if n == 0:
+        raise ValueError('New restriction matrix would have shape ' + str((n,N))
+                         + '.' + 'Coarse set would have 0 points! ' + 
+                        'Try a larger problem or fewer gridlevels.')
+    if dense:
+        R = np.zeros((n, N))
+    else:
+        R = sparse.lil_matrix((n, N))
+    
+    # columns in the restriction matrix:
+    if alpha == 1:
+        coarse_columns = np.array(range(N)).reshape(shape)[::2].ravel()
+    elif alpha == 2:
+        coarse_columns = np.array(range(N)).reshape(shape)[::2, ::2].ravel()
+    elif alpha == 3:
+        coarse_columns = np.array(range(N)).reshape(shape)[::2, ::2, ::2].ravel()
+    else:
+        raise ValueError("restriction(): Greater than 3 dimensions is not"
+                         "implemented. (shape was" + str(shape) +" .)")
+    
+    each = 1.0 / (2 ** alpha)
+    for r, c in zip(range(n), coarse_columns):
+        R[r, c] = each
+        R[r, c + 1] = each
+        if alpha >= 2:
+            R[r, c + NX] = each
+            R[r, c + NX + 1] = each
+            if alpha == 3:
+                R[r, c + NX * NY] = each
+                R[r, c + NX * NY + 1] = each
+                R[r, c + NX * NY + NX] = each
+                R[r, c + NX * NY + NX + 1] = each
+
+    if dense:
+        return R
+    else:
+        return R.tocsr()
+
+
+def restrictions(problemshape, coarsest_level, dense=False, verbose=False):
+    """
+    Returns a list of restriction matrices (non-square) for each level.
+    It should, therefore, be a list with as many elements
+    as the output of coarsen_A().
+    
+    Parameters
+    ----------
+    problemshape : tuple of ints
+        The problem geometry. Only rectangular geometries of less than 3
+        spatial dimensions are dealt with here. The product of the values in
+        this tuple should be the total number of unknowns, N.
+    coarsest_level : int
+        With a numbering like [1, 2, ..., coarsest level], this defines
+        how deep the coarsening hierarchy should go.
+    
+    Optional Parameters
+    -------------------
+    dense=False : bool
+        Whether to not use CSR storage for the returned restriction operators.
+    verbose=False: bool
+        Whether to print progress information.
+        
+    Returns
+    -------
+    R : list of ndarrays
+        A list of (generally nonsquare) restriction operators, one for each
+        transition between levels of resolution.
+    """
+    if verbose: print "Generating restriction matrices; dense=%s" % dense
+    levels = coarsest_level + 1
+    R = list(range(levels - 1))  # We don't need R at the coarsest level.
+    for level in range(levels - 1):
+        R[level] = restriction(tuple(np.array(problemshape) / (2 ** level)), dense=dense)
+    return R
+
+
 def coarsen_A(A_in, R, dense=False, verbose=False):
-    '''Returns a list of coeffecient matrices.
+    """Returns a list of coeffecient matrices.
     
     Parameters
     ----------
@@ -365,7 +348,7 @@ def coarsen_A(A_in, R, dense=False, verbose=False):
     A : list of ndarrays
         A list of square 2D ndarrays of decreasing size; one for each level
         level of resolution.
-    '''
+    """
     if verbose: print "Generating coefficient matrices; dense=%s ..." % dense,
     coarsest_level = len(R)
     levels = coarsest_level + 1
