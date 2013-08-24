@@ -129,9 +129,7 @@ def restrictions(problemshape, coarsest_level, dense=False, verbose=False):
         transition between levels of resolution.
     '''
     if verbose: print "Generating restriction matrices; dense=%s" % dense
-    alpha = np.array(problemshape).size
     levels = coarsest_level + 1
-    N = tools.product(problemshape)
     R = list(range(levels - 1))  # We don't need R at the coarsest level.
     for level in range(levels - 1):
         if dense:
@@ -260,9 +258,40 @@ def amg_cycle(A, b, level, R, parameters, initial=None):
     '''
     Internally used function that shows the actual multi-level solution method,
     through a recursive call within the "level < coarsest_level" block, below.
-    Returns a tuple:
+    
+    Parameters
+    ----------
+    A : list of ndarrays
+        A list of square arrays; one for each level of resolution. As returned
+        by coarsen_A().
+    b : ndarray
+        top-level RHS vector
+    level : int
+        The current multigrid level. This value is 0 at the entry point for standard,
+        recursive multigrid.
+    R : list of ndarrays
+        A list of (generally nonsquare) arrays; one for each transition between
+        levels of resolution. As returned by restrictions().
+    parameters : dict 
+        A dictionary of parameters. See documentation for mg_solve() for details.
+        
+    Optional Parameters
+    -------------------
+    initial=np.zeros((b.size, )) : ndarray
+        Initial iterate. Defaults to the zero vector, but the last supplied
+        solution should be used for chained v-cycles.
+    
+    Returns
+    -------
+    
+    u_out : ndarray
         solution
-        dictionary of interesting things
+    
+    info_dict
+        Dictionary of information about the solution process. Fields:
+        norm
+            The final norm of the residual
+    
     '''
     verbose = parameters['verbose']
     if initial is None:
