@@ -1,3 +1,11 @@
+"""
+Sample code for using OpenMG. For a minimal example, see
+simpleDemo(). For more explanation of what each step of the explainedDemo does, see
+explainedDemo().
+
+@author: bertalan@princeton.edu
+"""
+
 import numpy as np
 import openmg
 from scipy import sparse
@@ -11,9 +19,9 @@ def main():
         args = [200]
     print "N    method     norm            seconds cycles"
     for N in args:
-        demo(N)
+        explainedDemo(N)
         print
-    demo(64, verbose=False, dense=True)
+    explainedDemo(64, verbose=False, dense=True)
 
 
 def simpleDemo(verbose=False):
@@ -59,7 +67,7 @@ def simpleDemo(verbose=False):
     return u_mg
     
 
-def demo(N, verbose=True, dense=False):
+def explainedDemo(N, verbose=True, dense=False):
     ## view the docstring
     #help(openmg.mgSolve)
     

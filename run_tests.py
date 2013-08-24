@@ -1,3 +1,5 @@
+"""Script runs tests and demos, checking quickly for regressions."""
+
 from openmg.tests import doTests
 doTests()
 print

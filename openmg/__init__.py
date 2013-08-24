@@ -1,3 +1,9 @@
+"""
+Primary functions for a demonstration implementation
+of standard multigrid.
+ 
+@author: bertalan@princeton.edu
+"""
 import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg

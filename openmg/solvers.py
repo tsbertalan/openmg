@@ -1,8 +1,12 @@
-'''
-Created on Aug 21, 2013
+"""
+Direct solvers and relaxation methods.
 
-@author: tsbertalan
-'''
+Currently, the direct solver (coarseSolve) uses either np.linalg.solve() or
+scipy.sparse.linalg.spsolve(), and the relaxation method is a pure-Python
+Gauss-Seidel implementation.
+
+@author: bertalan@princeton.edu
+"""
 import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
@@ -10,9 +14,9 @@ import scipy.sparse.linalg as splinalg
 from tools import getresidual
 
 def coarseSolve(A, b):
-    '''Uses scipy.sparse.numpy.linalg.solve or np.linalg.solve, depending on
+    """Uses scipy.sparse.numpy.linalg.solve or np.linalg.solve, depending on
     the sparsity of A.
-    '''
+    """
     if sparse.issparse(A):
         #toreturn = sparse.sputils.np.linalg.solve(A, b)
         #toreturn = sparse.linalg.dsolve.spsolve(A, b)
@@ -28,10 +32,10 @@ def smoothToThreshold(A, b, x, threshold, verbose=False):
     return gaussSeidel(A, b, x, threshold=threshold, verbose=verbose)
 
 def gaussSeidel(A, b, x, iterations=None, threshold=None, verbose=False):
-    '''An implementation of Gauss-Seidel iterative solution.
+    """An implementation of Gauss-Seidel iterative solution.
     Will stop when the given number of iterations are exausted OR an absolute
     error norm is achieved.
-    '''
+    """
     if iterations is None and threshold is None:
         iterations = 1
     N = x.size

@@ -1,3 +1,13 @@
+"""
+Some plotting code used in the early development of OpenMG.
+
+It is pretty rough, but contains a some methods I used to generate plots for
+papers and presentations. When I clean it up later, I'll remove this paragraph.
+Until then, sorry.
+
+@author: bertalan@princeton.edu
+""" 
+
 import matplotlib
 from matplotlib import *
 from matplotlib.pyplot import figure, title, savefig

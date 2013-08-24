@@ -1,3 +1,12 @@
+"""
+Tests for OpenMG. Mostly, they just check that interfaces are all still
+functional. Coverage appears to be close to 100%, but there is certainly still
+potential for logical testing holes.
+
+@author: bertalan@princeton.edu
+"""
+
+
 import unittest
 import numpy as np
 from __init__ import flexibleMmult, mgSolve, tools, restriction

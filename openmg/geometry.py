@@ -1,34 +1,12 @@
 '''
-Created on Aug 21, 2013
-
-@author: tsbertalan
+Functions specific to the geometric nature of our sample
+problems. Specifically, it only (for now) contains functions for generating
+coeffecient matrices for a central-difference approximation to the Poisson
+operator.
+ 
+@author: bertalan@princeton.edu
 '''
 import numpy as np
-
-
-def poisson(N):
-    '''Returns a sparse square coefficient matrix for the 1D Poisson equation.
-    '''
-    import scipy.sparse as sparse
-    #A = sparse.lil_matrix((N, N))
-    #for i in range(N):
-    #    A[i, i] = 4
-    #    if i > 1:
-    #        A[i, i-1] = -1
-    #    if i < N-1:
-    #        A[i, i+1] = -1
-    #i = sparse.eye(n, n)
-    #A = s + i * 2.0
-    #return sparse.csr_matrix(A)
-    i=0
-    main = sparse.eye(N, N) * 4
-    off = (sparse.eye(N-1, N-1) * -1).tocsr()
-    longPad = np.zeros((N, 1))
-    shortPad = np.zeros((N-1, 1))
-    top = sparse.vstack((sparse.hstack((shortPad, off)), longPad.T))
-    bottom = top.T
-    A = main + top + bottom
-    return A
 
 
 def poisson1D(n):
@@ -93,6 +71,7 @@ def poissonnd(shape):
     else:
         raise ValueError('Only 1, 2 or 3 dimensions are allowed.')
 
+poisson = poissonnd
 
 if __name__ == '__main__':
     import doctest

@@ -1,7 +1,8 @@
 '''
-Created on Aug 21, 2013
+Helper/utility functions for doing a few repeated tasks that
+are not of any real algorithmic importance.
 
-@author: tsbertalan
+@author: bertalan@princeton.edu
 '''
 import numpy as np
 import scipy.sparse as sparse
@@ -57,6 +58,7 @@ def product(iterableThing):
     for thing in iterableThing:
         out *= thing
     return out
+
 
 if __name__ == '__main__':
     import doctest
