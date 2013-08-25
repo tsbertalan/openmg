@@ -46,6 +46,14 @@ class TestOpenMG(unittest.TestCase):
     def setUp(self):
         self.verbose = False
         self.saveFig = False
+        self.parameters = {
+                           'problemShape': (512,),
+                           'gridLevels': 3,
+                           'iterations': 1,
+                           'verbose': False,
+                           'threshold': 4,
+                           'giveInfo': True,
+                          }
     
     def test_a(self):
         '''
@@ -60,7 +68,7 @@ class TestOpenMG(unittest.TestCase):
         u_actual = np.sin(np.array(range(int(size))) * 3.0 / size).T
         A = operators.poissonnd((size,))
         b = tools.flexibleMmult(A, u_actual)
-        u_iterative = smooth(A, b, u_zeros, iterations=1)
+        uSmoothed = smooth(A, b, u_zeros, iterations=1)
         parameters = {'coarsestLevel': gridLevels - 1,
                       'problemShape': (problemscale, problemscale, problemscale),
                       'gridLevels': gridLevels,
@@ -68,7 +76,7 @@ class TestOpenMG(unittest.TestCase):
                       }
         u_mmg = mgSolve(A, b, parameters)
         if self.verbose:
-            print 'norm is', (np.linalg.norm(tools.getresidual(b, A, u_iterative.reshape((size, 1)), size)))
+            print 'norm is', (np.linalg.norm(tools.getresidual(b, A, uSmoothed.reshape((size, 1)), size)))
         residual_norm = np.linalg.norm(tools.flexibleMmult(A, u_mmg) - b)
         assert parameters['threshold'] > residual_norm
     
@@ -347,24 +355,17 @@ class TestOpenMG(unittest.TestCase):
         x_init = np.zeros((N,))
         x = gaussSeidel(A, b, x_init,)
     
-    def test_1d_noise_mg(self):
+    def test_1d_noise_mg(self, parameters=None):
         '''Solve a 2D Poisson equation, with the solution being 2D white noise,
         i.e., np.random.random((NX,NY)). Useful as a sanity check.
         '''
-        NX = 512
-        N = NX
+        if parameters is None:
+            parameters = self.parameters
+        N = NX = parameters['problemShape'][0]
         u_actual = np.random.random((NX,)).reshape((N, 1))
         A_in = operators.poissonnd((NX,))
         b = tools.flexibleMmult(A_in, u_actual)
-        u_mg, info_dict = mgSolve(A_in, b, {
-                                               'problemShape': (NX,),
-                                               'gridLevels': 3,
-                                               'iterations': 1,
-                                               'verbose': False,
-                                               'threshold': 4,
-                                               'giveInfo': True,
-                                              }
-                                    )
+        u_mg, info_dict = mgSolve(A_in, b, parameters)
         if self.verbose:
             print 'test_1d_noise_mg: final norm is ', info_dict['norm']
     
@@ -537,6 +538,15 @@ class TestOpenMG(unittest.TestCase):
             def testor():
                 R = operators.restriction((4, 4, 4, 4), dense=dense)
             np.testing.assert_raises(ValueError, testor)
+            
+    def test_neitherStopValueError(self):
+        parameters = self.parameters.copy()
+        parameters["cycles"] = 0
+        parameters["threshold"] = 0
+        def testor():
+            self.test_1d_noise_mg(parameters=parameters)
+        np.testing.assert_raises(ValueError, testor)
+
 
 def doTests():
     suite = unittest.TestLoader().loadTestsFromTestCase(TestOpenMG)

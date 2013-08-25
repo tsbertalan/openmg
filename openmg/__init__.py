@@ -50,12 +50,17 @@ def mgSolve(A_in, b, parameters):
                 verbose=False : bool
                     Whether to print progress information.
                 threshold=.1 : float_like
-                    Absolute tolerance for doing v-cycles, if an explicit number
-                     of cycles to perform is not given (i.e., for cycles=0).
+                    Absolute tolerance for doing v-cycles. Values less than or
+                    equal to zero are interpreted as meaning that v-cycling will
+                    only stop when parameters['cycles'] v-cycles have been done.
                 cycles=0 : int
-                    How many v-cycles to perform. 0 is interpreted as meaning
-                    that v-cycles should be continued until the
-                    residual norm falls below threshold.
+                    How many v-cycles to perform. Values less than or equal to
+                    zero are interpreted as meaning that v-cycles should be
+                    continued until the residual norm falls below
+                    parameters['threshold'].
+                    If both threshold and cycles are > 0, the first
+                    condition to be met will halt the v-cycling. If both are > 0,
+                    ValueError is raised.
                 preIterations=1 : int
                     How many iterations to use in the pre-smoother.
                 postIterations=0 : int
@@ -95,8 +100,8 @@ def mgSolve(A_in, b, parameters):
     if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
 
     # set up stopping conditions for v-cycling    
-    assert not (parameters['cycles'] <= 0 and 'threshold' not in parameters),\
-            "The parameters dictionary must contain either cycles>0 or a threshold."
+    if parameters['threshold'] <= 0 and parameters['cycles'] <= 0:
+        raise ValueError("Either parameters['threshold'] or parameters['cycles'] must be > 0.")
     def stop(cycle, norm):
         """Returns True if either stopping condition is met."""
         cycleStop = thresholdStop = False
@@ -104,7 +109,7 @@ def mgSolve(A_in, b, parameters):
             if cycle >= parameters['cycles']:
                 cycleStop = True
         if 'threshold' in parameters:
-            if norm < parameters['threshold']:
+            if norm < parameters['threshold'] and parameters['threshold'] > 0:
                 thresholdStop = True
         return cycleStop or thresholdStop
     
@@ -116,7 +121,6 @@ def mgSolve(A_in, b, parameters):
         norm = infoDict['norm']
         if verbose: print "Residual norm from cycle %d is %f." % (cycle, norm)
         stopping = stop(cycle, norm)
-            
 
     infoDict['cycle'] = cycle
     infoDict['norm'] = norm
