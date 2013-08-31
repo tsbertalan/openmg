@@ -66,7 +66,7 @@ class TestOpenMG(unittest.TestCase):
         gridLevels = 4
         u_zeros = np.zeros((size,))
         u_actual = np.sin(np.array(range(int(size))) * 3.0 / size).T
-        A = operators.poissonnd((size,))
+        A = operators.poisson((size,))
         b = tools.flexibleMmult(A, u_actual)
         uSmoothed = smooth(A, b, u_zeros, iterations=1)
         parameters = {'coarsestLevel': gridLevels - 1,
@@ -135,7 +135,7 @@ class TestOpenMG(unittest.TestCase):
             data = np.random.random((N,))  # 1D white noise
         gif_output_name = 'spectral_solution_rate-%i_unknowns-%s_xscale-%s_solution.gif' % (N, spectralxscale, solutionname)
 
-        A = operators.poissonnd((N,))
+        A = operators.poisson((N,))
         b = tools.flexibleMmult(A, data)
 
     #    Prepare for Graphing
@@ -268,7 +268,7 @@ class TestOpenMG(unittest.TestCase):
         specax.set_xscale('log')
 
         # Problem Setup:
-        A = operators.poissonnd((NX, NX))
+        A = operators.poisson((NX, NX))
         solnforb = data.ravel().reshape((NX ** 2, 1))
         b = tools.flexibleMmult(A, solnforb)
 
@@ -336,7 +336,7 @@ class TestOpenMG(unittest.TestCase):
         NX = 12
         NY = NX
         N = NX * NY
-        A = operators.poisson2D((NX, NY,))
+        A = operators.poisson((NX, NY,))
         b = np.random.random((N,))
         x_init = np.zeros((N,))
         threshold = 0.0001
@@ -350,7 +350,7 @@ class TestOpenMG(unittest.TestCase):
     def test_gs_nothresh(self):
         '''Test the Gauss-Siedel with no threshold or iterations specified.'''
         NX = N = 12
-        A = operators.poissonnd((NX,))
+        A = operators.poisson((NX,))
         b = np.random.random((N,))
         x_init = np.zeros((N,))
         x = gaussSeidel(A, b, x_init,)
@@ -363,7 +363,7 @@ class TestOpenMG(unittest.TestCase):
             parameters = self.parameters
         N = NX = parameters['problemShape'][0]
         u_actual = np.random.random((NX,)).reshape((N, 1))
-        A_in = operators.poissonnd((NX,))
+        A_in = operators.poisson((NX,))
         b = tools.flexibleMmult(A_in, u_actual)
         u_mg, info_dict = mgSolve(A_in, b, parameters)
         if self.verbose:
@@ -377,7 +377,7 @@ class TestOpenMG(unittest.TestCase):
         N = NX * NY * NZ
         shape = NX, NY, NZ
         u_actual = np.random.random(shape).reshape((N, 1))
-        A_in = operators.poissonnd(shape)
+        A_in = operators.poisson(shape)
         b = tools.flexibleMmult(A_in, u_actual)
         u_mg, info_dict = mgSolve(A_in, b, {
                                                'problemShape': shape,
@@ -400,7 +400,7 @@ class TestOpenMG(unittest.TestCase):
         NY = NX
         N = NX * NY
         u_actual = np.random.random((NX, NY)).reshape((N, 1))
-        A_in = operators.poissonnd((NX, NY))
+        A_in = operators.poisson((NX, NY))
         b = tools.flexibleMmult(A_in, u_actual)
         u_mg, info_dict = mgSolve(A_in, b, {
                                                'problemShape': (NX, NY),
@@ -431,7 +431,7 @@ class TestOpenMG(unittest.TestCase):
 #             N = NX * NY * NZ
 #             print 'NX is', NX, 'and N is ', N, ':'
 #             u_actual = np.random.random((NX, NY, NZ)).reshape((N, 1))
-#             A_in = poissonnd((NX, NY, NZ))
+#             A_in = poisson((NX, NY, NZ))
 #             b = tools.flexibleMmult(A_in, u_actual)
 #             (u_mg, info_dict) = mgSolve(A_in, b,
 #                                 {'problemShape': (NX, NY, NZ),
@@ -458,7 +458,7 @@ class TestOpenMG(unittest.TestCase):
         NY = NX
         N = NX * NY
         (X, Y, u_actual) = mpl_test_data(delta=1 / float(sizemultiplier))
-        A_in = operators.poissonnd((NX, NY))
+        A_in = operators.poisson((NX, NY))
         b = tools.flexibleMmult(A_in, u_actual.ravel())
         u_mg = mgSolve(A_in, b, {
                                   'problemShape': (NX, NY),
@@ -494,7 +494,7 @@ class TestOpenMG(unittest.TestCase):
     def test_threshStop(self):
         size = 36
         u_actual = np.sin(np.array(range(int(size))) * 3.0 / size).T
-        A = operators.poissonnd((size,))
+        A = operators.poisson((size,))
         b = tools.flexibleMmult(A, u_actual)
         parameters = {
                       'problemShape': (size,),
@@ -509,7 +509,7 @@ class TestOpenMG(unittest.TestCase):
     def test_cycleStop(self):
         size = 36
         u_actual = np.sin(np.array(range(int(size))) * 3.0 / size).T
-        A = operators.poissonnd((size,))
+        A = operators.poisson((size,))
         b = tools.flexibleMmult(A, u_actual)
         parameters = {
                       'problemShape': (size,),
@@ -524,7 +524,7 @@ class TestOpenMG(unittest.TestCase):
 
     def test_poisson4d(self):
         def testor():
-            operators.poissonnd((1, 2, 3, 4))
+            operators.poisson((1, 2, 3, 4))
         np.testing.assert_raises(ValueError, testor)
         
     def test_123DRestriction(self):
