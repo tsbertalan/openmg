@@ -1,0 +1,11 @@
+# editor temporary files
+*.swp
+*~
+# python bytecode
+*.pyc
+# output (logging folder)
+output/*
+temp/*
+.project
+.pydevproject
+visualization.py
