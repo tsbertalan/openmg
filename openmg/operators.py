@@ -50,9 +50,9 @@ def restriction(shape, dense=False):
     N = tools.product(shape)
 
     n = N / (2 ** alpha)
-    if n == 0:
+    if n in (0, 1):
         raise ValueError('New restriction matrix would have shape ' + str((n,N))
-                         + '.' + 'Coarse set would have 0 points! ' + 
+                         + '. ' + 'Coarse set would have %d point(s)! ' % n+ 
                         'Try a larger problem or fewer gridLevels.')
     if dense:
         R = np.zeros((n, N))

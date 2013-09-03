@@ -193,8 +193,8 @@ def mgCycle(A, b, level, R, parameters, initial=None):
         coarseResidual = tools.flexibleMmult(R[level], residual.reshape((N, 1))).reshape((NH,))
         
         # (3) correction for residual via recursive call
-        coarse_correction = mgCycle(A, coarseResidual, level+1, R, parameters)[0]
-        correction = (tools.flexibleMmult(R[level].transpose(), coarse_correction.reshape((NH, 1)))).reshape((N, ))
+        coarseCorrection = mgCycle(A, coarseResidual, level+1, R, parameters)[0]
+        correction = (tools.flexibleMmult(R[level].transpose(), coarseCorrection.reshape((NH, 1)))).reshape((N, ))
         
         if parameters['postIterations'] > 0:
             # (5) post-smoothing

@@ -20,7 +20,7 @@ def coarseSolve(A, b):
     if sparse.issparse(A):
         #toreturn = sparse.sputils.np.linalg.solve(A, b)
         #toreturn = sparse.linalg.dsolve.spsolve(A, b)
-        toreturn = splinalg.spsolve(A,b)
+        toreturn = splinalg.spsolve(A, b)
     else:
         toreturn = np.linalg.solve(A, b)
     return np.ravel(toreturn)
