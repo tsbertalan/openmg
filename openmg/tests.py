@@ -108,7 +108,8 @@ class TestOpenMG(unittest.TestCase):
         for NX in multifreq_problemscales:
             self.multifreq_2d(NX, frames)
     
-    def multifreq_1d(self, N, finaliterations, spectralxscale='linear', solutionname='whitenoise'):
+    def multifreq_1d(self, N, finaliterations, spectralxscale='linear',
+                     solutionname='whitenoise', save=False):
         '''Generates 1-dimensional uniform noise with N unknowns, then applies
         Gauss-Siedel smoothing iterations to an initial zero-vector guess until
         finaliterations is reached, graphing the Fourier transform of the error
@@ -117,9 +118,7 @@ class TestOpenMG(unittest.TestCase):
         finaliterations iterations, and graphing after each sweep.
     
         Uses ffmpeg and mplayer.'''
-        import matplotlib.pyplot as plt
         from scipy import fftpack
-        from os import system
         if solutionname == 'summedsine':  # Summed sine waves of several frequencies.
             data = np.zeros((N,))  # initialize
             domainwidthsexponents = range(10)
@@ -138,15 +137,17 @@ class TestOpenMG(unittest.TestCase):
         A = operators.poisson((N,))
         b = tools.flexibleMmult(A, data)
 
-    #    Prepare for Graphing
-        fig = plt.figure(figsize=(7.5, 7))
-        fig.suptitle(gif_output_name)
-        fig.subplots_adjust(wspace=.2)
-        fig.subplots_adjust(hspace=.2)
-        solnax = fig.add_subplot(211)  # subplot to hold the solution
-        solnaxylim = [0, 1]
-        specax = fig.add_subplot(212)  # subplot to hold the spectrum
-        specaxylim = [10.0 ** (-18), 10.0 ** 3]
+        if self.saveFig:
+            import matplotlib.pyplot as plt
+        #    Prepare for Graphing
+            fig = plt.figure(figsize=(7.5, 7))
+            fig.suptitle(gif_output_name)
+            fig.subplots_adjust(wspace=.2)
+            fig.subplots_adjust(hspace=.2)
+            solnax = fig.add_subplot(211)  # subplot to hold the solution
+            solnaxylim = [0, 1]
+            specax = fig.add_subplot(212)  # subplot to hold the spectrum
+            specaxylim = [10.0 ** (-18), 10.0 ** 3]
 
         solutions = []
         spectra = []
@@ -156,22 +157,21 @@ class TestOpenMG(unittest.TestCase):
         iterationslist = range(finaliterations)
     #    from random import shuffle
     #    shuffle(iterationslist)
-        iterations_to_save = range(1, finaliterations + 1)
-        str_tosave = []
-        for x in iterations_to_save:
-            str_tosave.append(str(x))
-        from os import system; system("mkdir -p output")
-        csvfilelabel = 'iterative_spectra-%i_N' % N
-        csvfile = open('output/%s.csv' % csvfilelabel, 'a')
-        csvfile.write('frequency,' + ','.join(str_tosave) + '\n')
-        csvfile.flush()
-        verbose = False
+        if save:
+            iterations_to_save = range(1, finaliterations + 1)
+            str_tosave = []
+            for x in iterations_to_save:
+                str_tosave.append(str(x))
+            from os import system; system("mkdir -p output")
+            csvfilelabel = 'iterative_spectra-%i_N' % N
+            csvfile = open('output/%s.csv' % csvfilelabel, 'a')
+            csvfile.write('frequency,' + ','.join(str_tosave) + '\n')
+            csvfile.flush()
         for iterations in iterationslist:
             solutions.append(smooth(A,
                                              b,
                                              np.zeros((N,)),
-                                             iterations,
-                                             verbose=verbose)
+                                             iterations)
                                             )
             spectra.append(fftpack.fft(b - tools.flexibleMmult(A,
                                                           solutions[iterations]
@@ -179,35 +179,38 @@ class TestOpenMG(unittest.TestCase):
                                       )
                           )
             filebasename = '%i_unknowns-%i_iterations' % (N, iterations)
-            filename = filebasename + '-solution.png'
-            solnax.set_ylim(solnaxylim)
-            solnax.set_autoscaley_on(False)
-            solnax.set_title(filebasename + ': Solution')
-            solnax.plot(solutions[iterations])
+            if self.saveFig:
+                filename = filebasename + '-solution.png'
+                solnax.set_ylim(solnaxylim)
+                solnax.set_autoscaley_on(False)
+                solnax.set_title(filebasename + ': Solution')
+                solnax.plot(solutions[iterations])
+    
+                specax.set_yscale('log')
+                specax.set_xscale(spectralxscale)
+                specax.set_ylim(specaxylim)
+                specax.set_autoscaley_on(False)
+                specax.set_title(filebasename + ': Solution Error (frequency domain)')
+                specax.plot(spectra[iterations])
 
-            specax.set_yscale('log')
-            specax.set_xscale(spectralxscale)
-            specax.set_ylim(specaxylim)
-            specax.set_autoscaley_on(False)
-            specax.set_title(filebasename + ': Solution Error (frequency domain)')
-            specax.plot(spectra[iterations])
-
-            filename = 'temp/' + filebasename + '-combined.png'
-            filenames.append(filename)
-            if self.saveFig: 
-                print "%i of %i: " % (loop, finaliterations) + "saving " + filename
-                fig.savefig(filename, dpi=80)
-            solnax.cla()
-            specax.cla()
+                filename = 'temp/' + filebasename + '-combined.png'
+                filenames.append(filename)
+                if self.saveFig: 
+                    print "%i of %i: " % (loop, finaliterations) + "saving " + filename
+                    fig.savefig(filename, dpi=80)
+                solnax.cla()
+                specax.cla()
             loop += 1
         frequencies = range(len(solutions[0]))
         for i in frequencies:
             towrite = '%i,' % frequencies[i]
             for spectrum in spectra:
                 towrite += '%.8f,' % abs(spectrum[i])
-            csvfile.write(towrite + '\n')
-            csvfile.flush()
-        csvfile.close()
+            if save:
+                csvfile.write(towrite + '\n')
+                csvfile.flush()
+        if save:
+            csvfile.close()
 
         # make .gif and .mp4 files:
         if self.saveFig:
@@ -240,10 +243,11 @@ class TestOpenMG(unittest.TestCase):
         to the generated problem, saving pretty pictures after each iteration.
         This might work OK if problemscale is big enough.
         '''
-        import matplotlib.pyplot as plt
         from scipy import fftpack
-        from matplotlib import cm
-        from mpl_toolkits.mplot3d import Axes3D
+        if self.saveFig:
+            import matplotlib.pyplot as plt
+            from matplotlib import cm
+            from mpl_toolkits.mplot3d import Axes3D
 
         # Generate test problem. Summed sine waves of several resolutions:
         NX = problemscale
@@ -257,15 +261,16 @@ class TestOpenMG(unittest.TestCase):
         X = np.tile(np.array(range(NX)), (NX, 1))
         Y = X.T
 
-        # Prepare for Graphing:
-        fig = plt.figure()
-        ax = Axes3D(fig)
-        ax.set_zlim3d([-1, 6])
-        specfig = plt.figure()
-        specax = specfig.add_subplot(111)
-        specax.set_ylim([.000001, 10000])
-        specax.set_autoscaley_on(False)
-        specax.set_xscale('log')
+        if self.saveFig:
+            # Prepare for Graphing:
+            fig = plt.figure()
+            ax = Axes3D(fig)
+            ax.set_zlim3d([-1, 6])
+            specfig = plt.figure()
+            specax = specfig.add_subplot(111)
+            specax.set_ylim([.000001, 10000])
+            specax.set_autoscaley_on(False)
+            specax.set_xscale('log')
 
         # Problem Setup:
         A = operators.poisson((NX, NX))
@@ -279,24 +284,25 @@ class TestOpenMG(unittest.TestCase):
         solutions[iterations] = np.zeros((NX, NX)).ravel()
         spectra[iterations] = b - tools.flexibleMmult(A, solutions[iterations])
 
-        # Initial graphs:
-        filebasename = 'output/N_%i-iterations_%i' % (NX ** 2, iterations)
-        filename = filebasename + '.png'
-        ax.set_title(filebasename)
-        # surf = ax.plot_wireframe(X, Y, solutions[iterations].reshape(NX,NX),rstride=stridelength,cstride=stridelength)
-        surf = ax.plot_surface(X, Y, data, cmap=cm.jet)
-#        print "saving", filename
-        if self.saveFig: fig.savefig(filename)
-        surf.remove()
-        ax.cla()
+        if self.saveFig:
+            # Initial graphs:
+            filebasename = 'output/N_%i-iterations_%i' % (NX ** 2, iterations)
+            filename = filebasename + '.png'
+            ax.set_title(filebasename)
+            # surf = ax.plot_wireframe(X, Y, solutions[iterations].reshape(NX,NX),rstride=stridelength,cstride=stridelength)
+            surf = ax.plot_surface(X, Y, data, cmap=cm.jet)
+    #        print "saving", filename
+            if self.saveFig: fig.savefig(filename)
+            surf.remove()
+            ax.cla()
 
-        # Error Spectrum
-        specax.plot(spectra[iterations])
-        specax.set_title(filebasename + ': Error Spectrum')
-        filename = filebasename + '-error.png'
-        if self.saveFig: specfig.savefig(filename)
-        del specax.lines[0]
-        specax.cla()
+            # Error Spectrum
+            specax.plot(spectra[iterations])
+            specax.set_title(filebasename + ': Error Spectrum')
+            filename = filebasename + '-error.png'
+            if self.saveFig: specfig.savefig(filename)
+            del specax.lines[0]
+            specax.cla()
 
         verbose = False
         for iterations in range(1, finaliterations):
@@ -307,29 +313,29 @@ class TestOpenMG(unittest.TestCase):
                                                     verbose=verbose
                                                    ).reshape(NX, NX)
             spectra[iterations] = fftpack.fft2(solutions[iterations])
-
-            filebasename = 'output/N_%i-iterations_%i' % (NX ** 2, iterations)
-            filename = filebasename + '-solution.png'
-            ax.set_zlim3d([-1, 6])
-            surf = ax.plot_surface(X, Y, solutions[iterations], cmap=cm.jet)
-            ax.set_title(filebasename)
-            surf = ax.plot_wireframe(X, Y, solutions[iterations])
-#            print "saving", filename
-            if self.saveFig: fig.savefig(filename)
-            surf.remove()
-            ax.cla()
-
-            specax.set_yscale('log')
-            specax.set_ylim([.000001, 10000])
-            specax.set_autoscaley_on(False)
-            specax.set_xscale('log')
-            specax.plot(spectra[iterations])
-            specax.set_title(filebasename + ': Error Spectrum')
-            filename = filebasename + '-error.png'
-#            print "saving", filename
-            if self.saveFig: specfig.savefig(filename)
-            del specax.lines[0]
-            specax.cla()
+            if self.saveFig:
+                filebasename = 'output/N_%i-iterations_%i' % (NX ** 2, iterations)
+                filename = filebasename + '-solution.png'
+                ax.set_zlim3d([-1, 6])
+                surf = ax.plot_surface(X, Y, solutions[iterations], cmap=cm.jet)
+                ax.set_title(filebasename)
+                surf = ax.plot_wireframe(X, Y, solutions[iterations])
+    #            print "saving", filename
+                if self.saveFig: fig.savefig(filename)
+                surf.remove()
+                ax.cla()
+    
+                specax.set_yscale('log')
+                specax.set_ylim([.000001, 10000])
+                specax.set_autoscaley_on(False)
+                specax.set_xscale('log')
+                specax.plot(spectra[iterations])
+                specax.set_title(filebasename + ': Error Spectrum')
+                filename = filebasename + '-error.png'
+    #            print "saving", filename
+                if self.saveFig: specfig.savefig(filename)
+                del specax.lines[0]
+                specax.cla()
     
     def test_gs_thresh(self):
         '''Test the Gauss-Siedel to-threshold solver.'''
