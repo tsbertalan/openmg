@@ -525,7 +525,7 @@ class TestOpenMG(unittest.TestCase):
     def test_poisson4d(self):
         def testor():
             operators.poisson((1, 2, 3, 4))
-        np.testing.assert_raises(ValueError, testor)
+        self.assertRaises(ValueError, testor)
         
     def test_123DRestriction(self):
         for dense in True, False:
@@ -537,7 +537,7 @@ class TestOpenMG(unittest.TestCase):
         for dense in True, False:
             def testor():
                 R = operators.restriction((4, 4, 4, 4), dense=dense)
-            np.testing.assert_raises(ValueError, testor)
+            self.assertRaises(ValueError, testor)
             
     def test_neitherStopValueError(self):
         parameters = self.parameters.copy()
@@ -545,7 +545,7 @@ class TestOpenMG(unittest.TestCase):
         parameters["threshold"] = 0
         def testor():
             self.test_1d_noise_mg(parameters=parameters)
-        np.testing.assert_raises(ValueError, testor)
+        self.assertRaises(ValueError, testor)
 
 
 def doTests():
