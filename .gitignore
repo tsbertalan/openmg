@@ -8,3 +8,6 @@ output/*
 temp/*
 .project
 .pydevproject
+*.npz*
+*qsub*
+*pbs*
