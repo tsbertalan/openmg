@@ -118,7 +118,6 @@ class TestOpenMG(unittest.TestCase):
         finaliterations iterations, and graphing after each sweep.
     
         Uses ffmpeg and mplayer.'''
-        from scipy import fftpack
         if solutionname == 'summedsine':  # Summed sine waves of several frequencies.
             data = np.zeros((N,))  # initialize
             domainwidthsexponents = range(10)
@@ -138,6 +137,7 @@ class TestOpenMG(unittest.TestCase):
         b = tools.flexibleMmult(A, data)
 
         if self.saveFig:
+            from scipy import fftpack
             import matplotlib.pyplot as plt
         #    Prepare for Graphing
             fig = plt.figure(figsize=(7.5, 7))
@@ -173,13 +173,14 @@ class TestOpenMG(unittest.TestCase):
                                              np.zeros((N,)),
                                              iterations)
                                             )
-            spectra.append(fftpack.fft(b - tools.flexibleMmult(A,
-                                                          solutions[iterations]
-                                                         )
-                                      )
-                          )
-            filebasename = '%i_unknowns-%i_iterations' % (N, iterations)
             if self.saveFig:
+                spectra.append(fftpack.fft(b - tools.flexibleMmult(A,
+                                                                   solutions[iterations]
+                                                                   )
+                                          )
+                              )
+            if self.saveFig:
+                filebasename = '%i_unknowns-%i_iterations' % (N, iterations)
                 filename = filebasename + '-solution.png'
                 solnax.set_ylim(solnaxylim)
                 solnax.set_autoscaley_on(False)
@@ -243,8 +244,8 @@ class TestOpenMG(unittest.TestCase):
         to the generated problem, saving pretty pictures after each iteration.
         This might work OK if problemscale is big enough.
         '''
-        from scipy import fftpack
         if self.saveFig:
+            from scipy import fftpack
             import matplotlib.pyplot as plt
             from matplotlib import cm
             from mpl_toolkits.mplot3d import Axes3D
@@ -312,7 +313,8 @@ class TestOpenMG(unittest.TestCase):
                                                     iterations,
                                                     verbose=verbose
                                                    ).reshape(NX, NX)
-            spectra[iterations] = fftpack.fft2(solutions[iterations])
+            if self.saveFig:
+                spectra[iterations] = fftpack.fft2(solutions[iterations])
             if self.saveFig:
                 filebasename = 'output/N_%i-iterations_%i' % (NX ** 2, iterations)
                 filename = filebasename + '-solution.png'
