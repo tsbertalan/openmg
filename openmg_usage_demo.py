@@ -101,11 +101,17 @@ def explainedDemo(N, verbose=True, dense=False):
     ## Use a 3-grid pattern.
     params = {'problemShape': (N,), 'gridLevels': 3, 'cycles': 0,
               'iterations': 2,       'verbose': False, 'dense': dense,
-              'threshold': threshold, 'giveInfo': True}
+              'threshold': threshold, 'giveInfo': True, 'minSize': 30}
+    
+    # gridLevels is set to 3, but minSize is set to 30.
+    # the resulting restriction matrices would have shapes:
+    #     (100, 200), (50, 100), and (25, 50)
+    # since 25 < 30, the minSize parameter prevails, and only the first two
+    # operators are generated.
+    
     start = time()
-    mg_output  = openmg.mgSolve(A, b, params)
-    soln = mg_output[0]
-    cycles = mg_output[1]['cycle']
+    soln, info_dict = openmg.mgSolve(A, b, params)
+    cycles = info_dict['cycle']
     elapsed = time() - start
     #print params
     if verbose: print N, "%i-grid"%params['gridLevels'],\

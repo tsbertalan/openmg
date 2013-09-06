@@ -555,6 +555,20 @@ class TestOpenMG(unittest.TestCase):
             self.test_1d_noise_mg(parameters=parameters)
         self.assertRaises(ValueError, testor)
 
+    def test_minSize(self):
+        parameters = self.parameters.copy()
+        shape = parameters["problemShape"] = (1024,)
+        parameters["gridLevels"] = 24
+        parameters["minSize"] = 23
+        u_actual = np.random.random(shape).ravel()
+        A_in = operators.poisson(shape)
+        b = tools.flexibleMmult(A_in, u_actual)
+        soln, info_dict = mgSolve(A_in, b, parameters)
+        if self.verbose:
+            print "R shapes:", [r.shape for r in info_dict['R']]
+            print "c.v. minSize = ", parameters['minSize']
+        assert min(info_dict['R'][-1].shape) > parameters["minSize"]
+
 
 def doTests():
     suite = unittest.TestLoader().loadTestsFromTestCase(TestOpenMG)

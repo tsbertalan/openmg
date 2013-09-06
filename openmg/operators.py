@@ -89,7 +89,7 @@ def restriction(shape, dense=False):
         return R.tocsr()
 
 
-def restrictionList(problemShape, coarsestLevel, dense=False, verbose=False):
+def restrictionList(problemShape, coarsestLevel, minSize, dense=False, verbose=False):
     """
     Returns a list of restriction matrices (non-square) for each level.
     It should, therefore, be a list with as many elements
@@ -103,7 +103,13 @@ def restrictionList(problemShape, coarsestLevel, dense=False, verbose=False):
         this tuple should be the total number of unknowns, N.
     coarsestLevel : int
         With a numbering like [1, 2, ..., coarsest level], this defines
-        how deep the coarsening hierarchy should go.
+        how deep the coarsening hierarchy should go, unless minSize is reached
+        first.
+    minSize : int
+        If the restriction operators would produce an output vector smaller than
+        this coarsestLevel will be adjusted such that they won't be used.
+        This will affect the rest of the steps in generation of the multigrid
+        hierarchy, outside of this function.
     
     Optional Parameters
     -------------------
@@ -120,9 +126,18 @@ def restrictionList(problemShape, coarsestLevel, dense=False, verbose=False):
     """
     if verbose: print "Generating restriction matrices; dense=%s" % dense
     levels = coarsestLevel + 1
-    R = list(range(levels - 1))  # We don't need R at the coarsest level.
-    for level in range(levels - 1):
-        R[level] = restriction(tuple(np.array(problemShape) / (2 ** level)), dense=dense)
+    R = []
+    level = 0
+    nextR = restriction(tuple(np.array(problemShape) / (2 ** level)), dense=dense)
+    R.append(nextR)
+    nNext = nextR.shape[0]
+    while level < levels - 1:
+        level += 1 
+        nextR = restriction(tuple(np.array(problemShape) / (2 ** level)), dense=dense)
+        nNext = nextR.shape[0]
+        if nNext <= minSize:
+            break
+        R.append(nextR)
     return R
 
 

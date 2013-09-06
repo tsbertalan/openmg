@@ -23,6 +23,7 @@ defaults = {
     'postIterations': 0,
     'dense': False,
     'giveInfo': False,
+    'minSize': 8,
 }
 def mgSolve(A_in, b, parameters):
     """
@@ -47,6 +48,14 @@ def mgSolve(A_in, b, parameters):
                 coarsestLevel=gridLevels - 1 : int
                     An int larger than 0 denoting the level at which
                     to use coarseSolve().
+                minSize=8 : int
+                    The smallest allowed vector size after restriction.
+                    
+                    When the hierarchy of operators is generated, these two
+                    parameters, coarsetLevel and minSize, are both used to
+                    determine how deep the hierarchy should go. Whichever would
+                    result in fewer levels prevails.
+                    
                 verbose=False : bool
                     Whether to print progress information.
                 threshold=.1 : float_like
@@ -77,6 +86,9 @@ def mgSolve(A_in, b, parameters):
         infoDict : dictionary
             Only returned if giveInfo=True was supplied in the parameters dictionary.
             A dictionary of interesting information about how the solution was calculated.
+            
+            Includes the number of V-cycles performed, the final residual norm,
+            and the operator hierarchies A and R for future examination, or deletion.
     """
     problemShape = parameters['problemShape']
     gridLevels = parameters['gridLevels']
@@ -88,7 +100,10 @@ def mgSolve(A_in, b, parameters):
     
     # Generate a list of restriction matrices; one for each level-transition.
     # Their transposes are prolongation matrices.
-    R = operators.restrictionList(problemShape, parameters['coarsestLevel'], dense=dense, verbose=verbose)
+    R = operators.restrictionList(problemShape, parameters['coarsestLevel'],
+                                  parameters['minSize'], dense=dense, verbose=verbose)
+
+    parameters['coarsestLevel'] = len(R)
 
     # Using this list, generate a list of coefficient matrices; one for each level:
     A = operators.coeffecientList(A_in, R, dense=dense, verbose=verbose)
@@ -124,6 +139,8 @@ def mgSolve(A_in, b, parameters):
 
     infoDict['cycle'] = cycle
     infoDict['norm'] = norm
+    infoDict['R'] = R
+    infoDict['A'] = A
     if verbose: print 'Returning mgSolve after %i cycle(s) with norm %f' % (cycle, norm)
     if parameters["giveInfo"]:
         return result, infoDict
