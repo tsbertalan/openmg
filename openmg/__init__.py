@@ -68,7 +68,7 @@ def mgSolve(A_in, b, parameters):
                     continued until the residual norm falls below
                     parameters['threshold'].
                     If both threshold and cycles are > 0, the first
-                    condition to be met will halt the v-cycling. If both are > 0,
+                    condition to be met will halt the v-cycling. If both are <=0,
                     ValueError is raised.
                 preIterations=1 : int
                     How many iterations to use in the pre-smoother.
